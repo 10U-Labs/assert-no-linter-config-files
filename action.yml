@@ -1,0 +1,50 @@
+---
+description: Assert directories contain no linter config files
+inputs:
+  count:
+    default: "false"
+    description: Print finding count only
+    required: false
+  directories:
+    description: Target directories to scan (space-separated)
+    required: true
+  exclude:
+    description: Glob patterns to exclude paths (space-separated)
+    required: false
+  fail-fast:
+    default: "false"
+    description: Exit on first finding
+    required: false
+  json:
+    default: "false"
+    description: Output findings as JSON
+    required: false
+  linters:
+    description: Comma-separated list of linters (jscpd,mypy,pylint,pytest,yamllint)
+    required: true
+  quiet:
+    default: "false"
+    description: Suppress output, exit code only
+    required: false
+  warn-only:
+    default: "false"
+    description: Always exit 0, report only
+    required: false
+name: Assert No Linter Config Files
+runs:
+  steps:
+    - run: pip install git+https://github.com/10U-Labs-LLC/assert-no-linter-config-files.git
+      shell: bash
+    - run: |
+        ARGS="--linters ${{ inputs.linters }}"
+        [ "${{ inputs.quiet }}" = "true" ] && ARGS="$ARGS --quiet"
+        [ "${{ inputs.count }}" = "true" ] && ARGS="$ARGS --count"
+        [ "${{ inputs.json }}" = "true" ] && ARGS="$ARGS --json"
+        [ "${{ inputs.fail-fast }}" = "true" ] && ARGS="$ARGS --fail-fast"
+        [ "${{ inputs.warn-only }}" = "true" ] && ARGS="$ARGS --warn-only"
+        for pattern in ${{ inputs.exclude }}; do
+          ARGS="$ARGS --exclude '$pattern'"
+        done
+        eval "assert-no-linter-config-files $ARGS ${{ inputs.directories }}"
+      shell: bash
+  using: composite
