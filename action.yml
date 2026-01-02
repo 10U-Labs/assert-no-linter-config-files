@@ -33,7 +33,7 @@ inputs:
 name: Assert No Linter Config Files
 runs:
   steps:
-    - run: pip install git+https://github.com/10U-Labs-LLC/assert-no-linter-config-files.git
+    - run: pip install assert-no-linter-config-files
       shell: bash
     - run: |
         ARGS="--linters ${{ inputs.linters }}"
