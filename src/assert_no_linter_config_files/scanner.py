@@ -147,7 +147,7 @@ def check_pyproject_toml(path: Path, content: str) -> list[Finding]:
             data = tomllib.loads(content)
             tool_section = data.get("tool", {})
             return _check_pyproject_with_tomllib(path_str, tool_section)
-        except Exception:  # pylint: disable=broad-except
+        except (tomllib.TOMLDecodeError, ValueError, KeyError, TypeError):
             pass
 
     return _check_pyproject_with_regex(path_str, content)
