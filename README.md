@@ -20,35 +20,65 @@ pip install -e .
 ## Usage
 
 ```bash
-assert-no-linter-config-files [DIRECTORY ...]
+assert-no-linter-config-files --linters LINTERS [OPTIONS] DIRECTORY [DIRECTORY ...]
 ```
 
-If no directories are provided, the current directory is scanned.
+### Required Arguments
+
+- `--linters LINTERS` - Comma-separated linters to check: `pylint,mypy,pytest,yamllint,jscpd`
+- `DIRECTORY` - One or more directories to scan
+
+### Optional Arguments
+- `--exclude PATTERN` - Glob pattern to exclude paths (repeatable)
+- `--quiet` - Suppress output, exit code only
+- `--count` - Print finding count only
+- `--json` - Output findings as JSON
+- `--fail-fast` - Exit on first finding
+- `--warn-only` - Always exit 0, report only
 
 ### Exit Codes
 
-- `0` - No linter configuration found
+- `0` - No linter configuration found (or `--warn-only`)
 - `1` - One or more linter configurations found
 - `2` - Usage/runtime error (invalid args, unreadable files)
 
 ### Examples
 
-Check the current directory:
+Check for pylint and mypy configs in the current directory:
 
 ```bash
-assert-no-linter-config-files
+assert-no-linter-config-files --linters pylint,mypy .
 ```
 
 Check specific directories:
 
 ```bash
-assert-no-linter-config-files src/ tests/
+assert-no-linter-config-files --linters pylint,mypy src/ tests/
+```
+
+Check all linters:
+
+```bash
+assert-no-linter-config-files --linters pylint,mypy,pytest,yamllint,jscpd .
+```
+
+Exclude vendor directories:
+
+```bash
+assert-no-linter-config-files --linters pylint,mypy \
+  --exclude "*vendor*" --exclude "*node_modules*" .
+```
+
+Get JSON output for CI integration:
+
+```bash
+assert-no-linter-config-files --linters pylint --json . | jq .
 ```
 
 Use in CI to enforce no local linter configs:
 
 ```bash
-assert-no-linter-config-files . || exit 1
+assert-no-linter-config-files --linters pylint,mypy . || exit 1
 ```
 
 ## What It Checks
@@ -106,6 +136,12 @@ Examples:
 ./pytest.ini:pytest:config file
 ./pyproject.toml:mypy:tool.mypy section
 ./setup.cfg:pylint:pylint.messages_control section
+```
+
+With `--json`:
+
+```json
+[{"path": "./pytest.ini", "tool": "pytest", "reason": "config file"}]
 ```
 
 ## CI Checks

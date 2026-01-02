@@ -1,16 +1,21 @@
 """Scanner for detecting linter configuration files and sections."""
 
 import configparser
+import fnmatch
 import os
 import re
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple
 
 try:
     import tomllib
     HAS_TOMLLIB = True
 except ImportError:
     HAS_TOMLLIB = False
+
+VALID_LINTERS: frozenset[str] = frozenset({
+    "pylint", "pytest", "mypy", "yamllint", "jscpd"
+})
 
 DEDICATED_CONFIG_FILES: dict[str, str] = {
     ".pylintrc": "pylint",
@@ -33,7 +38,16 @@ DEDICATED_CONFIG_FILES: dict[str, str] = {
 }
 
 
-class Finding(NamedTuple):
+def make_path_relative(path: str) -> str:
+    """Convert an absolute path to a relative path from cwd."""
+    try:
+        return str(Path(path).relative_to(Path.cwd()))
+    except ValueError:
+        return path
+
+
+@dataclass(frozen=True)
+class Finding:
     """Represents a detected linter configuration."""
 
     path: str
@@ -42,7 +56,46 @@ class Finding(NamedTuple):
 
     def __str__(self) -> str:
         """Format the finding as path:tool:reason."""
-        return f"{self.path}:{self.tool}:{self.reason}"
+        relative_path = make_path_relative(self.path)
+        return f"{relative_path}:{self.tool}:{self.reason}"
+
+    def to_dict(self) -> dict[str, str]:
+        """Convert finding to dictionary for JSON output."""
+        return {
+            "path": self.path,
+            "tool": self.tool,
+            "reason": self.reason,
+        }
+
+
+def parse_linters(linters_str: str) -> frozenset[str]:
+    """Parse comma-separated linters string and validate.
+
+    Args:
+        linters_str: Comma-separated list of linter names.
+
+    Returns:
+        Frozenset of valid linter names.
+
+    Raises:
+        ValueError: If any linter name is invalid.
+    """
+    linters = frozenset(
+        t.strip().lower() for t in linters_str.split(",") if t.strip()
+    )
+
+    invalid = linters - VALID_LINTERS
+    if invalid:
+        valid_list = ", ".join(sorted(VALID_LINTERS))
+        invalid_list = ", ".join(sorted(invalid))
+        raise ValueError(
+            f"Invalid linter(s): {invalid_list}. Valid options: {valid_list}"
+        )
+
+    if not linters:
+        raise ValueError("At least one linter must be specified")
+
+    return linters
 
 
 def _check_pyproject_with_tomllib(
@@ -158,8 +211,34 @@ def _process_shared_config_file(
     return []
 
 
-def scan_directory(directory: Path) -> list[Finding]:
-    """Scan a directory recursively for linter configuration files."""
+def _matches_exclude_pattern(
+    path: str, exclude_patterns: list[str]
+) -> bool:
+    """Check if path matches any exclude pattern."""
+    for pattern in exclude_patterns:
+        if fnmatch.fnmatch(path, pattern):
+            return True
+    return False
+
+
+def scan_directory(
+    directory: Path,
+    linters: frozenset[str],
+    exclude_patterns: list[str] | None = None,
+) -> list[Finding]:
+    """Scan a directory recursively for linter configuration files.
+
+    Args:
+        directory: The directory to scan.
+        linters: Set of linters to check.
+        exclude_patterns: List of glob patterns to exclude paths.
+
+    Returns:
+        A list of Finding objects for each config found.
+    """
+    if exclude_patterns is None:
+        exclude_patterns = []
+
     findings: list[Finding] = []
     shared_config_files = {"pyproject.toml", "setup.cfg", "tox.ini"}
 
@@ -169,19 +248,19 @@ def scan_directory(directory: Path) -> list[Finding]:
 
         for filename in files:
             file_path = Path(root) / filename
+            path_str = str(file_path)
+
+            # Check exclude patterns
+            if _matches_exclude_pattern(path_str, exclude_patterns):
+                continue
 
             if filename in DEDICATED_CONFIG_FILES:
                 tool = DEDICATED_CONFIG_FILES[filename]
-                findings.append(Finding(str(file_path), tool, "config file"))
+                if tool in linters:
+                    findings.append(Finding(path_str, tool, "config file"))
             elif filename in shared_config_files:
-                findings.extend(_process_shared_config_file(file_path, filename))
+                file_findings = _process_shared_config_file(file_path, filename)
+                # Filter by requested linters
+                findings.extend(f for f in file_findings if f.tool in linters)
 
     return findings
-
-
-def make_path_relative(path: str) -> str:
-    """Convert an absolute path to a relative path from cwd."""
-    try:
-        return str(Path(path).relative_to(Path.cwd()))
-    except ValueError:
-        return path

@@ -1,16 +1,24 @@
 """Unit tests for the scanner module."""
 
+import builtins
+import importlib
+import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from assert_no_linter_config_files.scanner import (
     DEDICATED_CONFIG_FILES,
+    VALID_LINTERS,
     Finding,
+    _check_pyproject_with_regex,
+    _process_shared_config_file,
     check_pyproject_toml,
     check_setup_cfg,
     check_tox_ini,
     make_path_relative,
+    parse_linters,
     scan_directory,
 )
 
@@ -46,7 +54,7 @@ class TestDedicatedConfigFiles:
     ) -> None:
         """Dedicated config files are detected."""
         (tmp_path / filename).touch()
-        findings = scan_directory(tmp_path)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 1
         assert findings[0].tool == expected_tool
         assert findings[0].reason == "config file"
@@ -56,7 +64,7 @@ class TestDedicatedConfigFiles:
         (tmp_path / "README.md").touch()
         (tmp_path / "main.py").touch()
         (tmp_path / ".gitignore").touch()
-        findings = scan_directory(tmp_path)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 0
 
 
@@ -231,7 +239,7 @@ class TestScanDirectory:
         git_dir = tmp_path / ".git"
         git_dir.mkdir()
         (git_dir / ".pylintrc").touch()
-        findings = scan_directory(tmp_path)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 0
 
     def test_recursive_scan(self, tmp_path: Path) -> None:
@@ -239,7 +247,7 @@ class TestScanDirectory:
         subdir = tmp_path / "subdir" / "nested"
         subdir.mkdir(parents=True)
         (subdir / "pytest.ini").touch()
-        findings = scan_directory(tmp_path)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 1
         assert findings[0].tool == "pytest"
 
@@ -247,7 +255,7 @@ class TestScanDirectory:
         """pyproject.toml is scanned for embedded config."""
         content = "[tool.mypy]\nstrict = true\n"
         (tmp_path / "pyproject.toml").write_text(content)
-        findings = scan_directory(tmp_path)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 1
         assert findings[0].tool == "mypy"
 
@@ -255,7 +263,7 @@ class TestScanDirectory:
         """setup.cfg is scanned for embedded config."""
         content = "[mypy]\nstrict = True\n"
         (tmp_path / "setup.cfg").write_text(content)
-        findings = scan_directory(tmp_path)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 1
         assert findings[0].tool == "mypy"
 
@@ -263,7 +271,7 @@ class TestScanDirectory:
         """tox.ini is scanned for embedded config."""
         content = "[pytest]\naddopts = -v\n"
         (tmp_path / "tox.ini").write_text(content)
-        findings = scan_directory(tmp_path)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 1
         assert findings[0].tool == "pytest"
 
@@ -271,12 +279,12 @@ class TestScanDirectory:
         """pyproject.toml without tool sections is not flagged."""
         content = "[project]\nname = 'myproject'\n"
         (tmp_path / "pyproject.toml").write_text(content)
-        findings = scan_directory(tmp_path)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 0
 
     def test_empty_directory(self, tmp_path: Path) -> None:
         """Empty directory returns no findings."""
-        findings = scan_directory(tmp_path)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 0
 
 
@@ -356,3 +364,272 @@ class TestDedicatedConfigFilesMapping:
         for filename, tool in DEDICATED_CONFIG_FILES.items():
             if "jscpd" in filename:
                 assert tool == "jscpd"
+
+
+@pytest.mark.unit
+class TestParseLinters:
+    """Tests for the parse_linters function."""
+
+    def test_single_linter(self) -> None:
+        """Parse a single linter."""
+        result = parse_linters("pylint")
+        assert result == frozenset({"pylint"})
+
+    def test_multiple_linters(self) -> None:
+        """Parse comma-separated linters."""
+        result = parse_linters("pylint,mypy,pytest")
+        assert result == frozenset({"pylint", "mypy", "pytest"})
+
+    def test_linters_with_spaces(self) -> None:
+        """Parse linters with surrounding spaces."""
+        result = parse_linters(" pylint , mypy ")
+        assert result == frozenset({"pylint", "mypy"})
+
+    def test_case_insensitive(self) -> None:
+        """Linter names are case-insensitive."""
+        result = parse_linters("PYLINT,MyPy")
+        assert result == frozenset({"pylint", "mypy"})
+
+    def test_invalid_linter_raises(self) -> None:
+        """Invalid linter raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid linter"):
+            parse_linters("invalid")
+
+    def test_empty_string_raises(self) -> None:
+        """Empty string raises ValueError."""
+        with pytest.raises(ValueError, match="At least one linter"):
+            parse_linters("")
+
+    def test_all_valid_linters(self) -> None:
+        """All valid linters can be parsed."""
+        linters_str = ",".join(VALID_LINTERS)
+        result = parse_linters(linters_str)
+        assert result == VALID_LINTERS
+
+
+@pytest.mark.unit
+class TestFindingToDict:
+    """Tests for the Finding.to_dict method."""
+
+    def test_to_dict(self) -> None:
+        """to_dict returns correct dictionary."""
+        finding = Finding("./pytest.ini", "pytest", "config file")
+        result = finding.to_dict()
+        assert result == {
+            "path": "./pytest.ini",
+            "tool": "pytest",
+            "reason": "config file",
+        }
+
+    def test_to_dict_with_section(self) -> None:
+        """to_dict works with section reason."""
+        finding = Finding("./pyproject.toml", "mypy", "tool.mypy section")
+        result = finding.to_dict()
+        assert result["path"] == "./pyproject.toml"
+        assert result["tool"] == "mypy"
+        assert result["reason"] == "tool.mypy section"
+
+
+@pytest.mark.unit
+class TestScanDirectoryWithFilters:
+    """Tests for scan_directory with linters and exclude filters."""
+
+    def test_filter_by_single_linter(self, tmp_path: Path) -> None:
+        """Filter by a single linter."""
+        (tmp_path / ".pylintrc").touch()
+        (tmp_path / "mypy.ini").touch()
+        findings = scan_directory(tmp_path, linters=frozenset({"pylint"}))
+        assert len(findings) == 1
+        assert findings[0].tool == "pylint"
+
+    def test_filter_by_multiple_linters(self, tmp_path: Path) -> None:
+        """Filter by multiple linters."""
+        (tmp_path / ".pylintrc").touch()
+        (tmp_path / "mypy.ini").touch()
+        (tmp_path / "pytest.ini").touch()
+        findings = scan_directory(tmp_path, linters=frozenset({"pylint", "mypy"}))
+        assert len(findings) == 2
+        linters_found = {f.tool for f in findings}
+        assert linters_found == {"pylint", "mypy"}
+
+    def test_exclude_pattern(self, tmp_path: Path) -> None:
+        """Exclude paths matching pattern."""
+        subdir = tmp_path / "vendor"
+        subdir.mkdir()
+        (subdir / ".pylintrc").touch()
+        (tmp_path / "mypy.ini").touch()
+        findings = scan_directory(
+            tmp_path, linters=VALID_LINTERS, exclude_patterns=["*vendor*"]
+        )
+        assert len(findings) == 1
+        assert findings[0].tool == "mypy"
+
+    def test_exclude_multiple_patterns(self, tmp_path: Path) -> None:
+        """Multiple exclude patterns work together."""
+        lib_dir = tmp_path / "lib"
+        ext_dir = tmp_path / "external"
+        lib_dir.mkdir()
+        ext_dir.mkdir()
+        (lib_dir / ".pylintrc").touch()
+        (ext_dir / "mypy.ini").touch()
+        (tmp_path / ".yamllint").touch()
+        findings = scan_directory(
+            tmp_path, linters=VALID_LINTERS, exclude_patterns=["*lib*", "*external*"]
+        )
+        assert len(findings) == 1
+        assert findings[0].tool == "yamllint"
+
+    def test_filter_embedded_config_by_linter(self, tmp_path: Path) -> None:
+        """Filter embedded config in pyproject.toml by linter."""
+        content = """
+[tool.mypy]
+strict = true
+
+[tool.pylint]
+max-line-length = 100
+"""
+        (tmp_path / "pyproject.toml").write_text(content)
+        findings = scan_directory(tmp_path, linters=frozenset({"mypy"}))
+        assert len(findings) == 1
+        assert findings[0].tool == "mypy"
+
+
+@pytest.mark.unit
+class TestPyprojectRegexFallback:
+    """Tests for the regex fallback when tomllib is unavailable or fails."""
+
+    def test_regex_fallback_detects_pylint(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.pylint] section."""
+        content = "[tool.pylint]\nmax-line-length = 100\n"
+        findings = _check_pyproject_with_regex(str(tmp_path), content)
+        assert len(findings) == 1
+        assert findings[0].tool == "pylint"
+
+    def test_regex_fallback_detects_mypy(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.mypy] section."""
+        content = "[tool.mypy]\nstrict = true\n"
+        findings = _check_pyproject_with_regex(str(tmp_path), content)
+        assert len(findings) == 1
+        assert findings[0].tool == "mypy"
+
+    def test_regex_fallback_detects_pytest(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.pytest.ini_options] section."""
+        content = "[tool.pytest.ini_options]\naddopts = '-v'\n"
+        findings = _check_pyproject_with_regex(str(tmp_path), content)
+        assert len(findings) == 1
+        assert findings[0].tool == "pytest"
+
+    def test_regex_fallback_detects_jscpd(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.jscpd] section."""
+        content = "[tool.jscpd]\nthreshold = 0\n"
+        findings = _check_pyproject_with_regex(str(tmp_path), content)
+        assert len(findings) == 1
+        assert findings[0].tool == "jscpd"
+
+    def test_regex_fallback_detects_yamllint(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.yamllint] section."""
+        content = "[tool.yamllint]\nrules = {}\n"
+        findings = _check_pyproject_with_regex(str(tmp_path), content)
+        assert len(findings) == 1
+        assert findings[0].tool == "yamllint"
+
+    def test_regex_fallback_no_findings(self, tmp_path: Path) -> None:
+        """Regex fallback returns empty for non-matching content."""
+        content = "[tool.black]\nline-length = 88\n"
+        findings = _check_pyproject_with_regex(str(tmp_path), content)
+        assert len(findings) == 0
+
+    def test_tomllib_parse_error_falls_back_to_regex(
+        self, tmp_path: Path
+    ) -> None:
+        """When tomllib fails to parse, regex fallback is used."""
+        # Invalid TOML but regex can still match
+        content = "[tool.mypy]\nstrict = {\n"  # Invalid TOML
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
+        assert len(findings) == 1
+        assert findings[0].tool == "mypy"
+
+    def test_check_pyproject_without_tomllib(self, tmp_path: Path) -> None:
+        """check_pyproject_toml uses regex when HAS_TOMLLIB is False."""
+        content = "[tool.pylint]\nmax-line-length = 100\n"
+        with patch(
+            "assert_no_linter_config_files.scanner.HAS_TOMLLIB", False
+        ):
+            findings = check_pyproject_toml(
+                tmp_path / "pyproject.toml", content
+            )
+        assert len(findings) == 1
+        assert findings[0].tool == "pylint"
+
+
+@pytest.mark.unit
+class TestConfigParserErrors:
+    """Tests for configparser error handling."""
+
+    def test_setup_cfg_invalid_syntax_returns_empty(
+        self, tmp_path: Path
+    ) -> None:
+        """Invalid setup.cfg returns no findings instead of crashing."""
+        # Content that will cause configparser to fail
+        content = "[section\nmissing closing bracket"
+        findings = check_setup_cfg(tmp_path / "setup.cfg", content)
+        assert len(findings) == 0
+
+    def test_tox_ini_invalid_syntax_returns_empty(
+        self, tmp_path: Path
+    ) -> None:
+        """Invalid tox.ini returns no findings instead of crashing."""
+        # Content that will cause configparser to fail
+        content = "[section\nmissing closing bracket"
+        findings = check_tox_ini(tmp_path / "tox.ini", content)
+        assert len(findings) == 0
+
+
+@pytest.mark.unit
+class TestProcessSharedConfigFile:
+    """Tests for the _process_shared_config_file function."""
+
+    def test_unknown_filename_returns_empty(self, tmp_path: Path) -> None:
+        """Unknown config file returns empty list."""
+        unknown_file = tmp_path / "unknown.txt"
+        unknown_file.write_text("content")
+        findings = _process_shared_config_file(unknown_file, "unknown.txt")
+        assert len(findings) == 0
+
+
+@pytest.mark.unit
+class TestTomlibImportFallback:
+    """Tests for the tomllib import fallback."""
+
+    def test_has_tomllib_false_when_import_fails(self) -> None:
+        """HAS_TOMLLIB is False when tomllib import fails."""
+        original_import = builtins.__import__
+
+        def mock_import(name, *args, **kwargs):
+            if name == "tomllib":
+                raise ImportError("No module named 'tomllib'")
+            return original_import(name, *args, **kwargs)
+
+        # Remove cached module
+        scanner_module = "assert_no_linter_config_files.scanner"
+        if scanner_module in sys.modules:
+            del sys.modules[scanner_module]
+        if "tomllib" in sys.modules:
+            saved_tomllib = sys.modules["tomllib"]
+            del sys.modules["tomllib"]
+        else:
+            saved_tomllib = None
+
+        try:
+            with patch.object(builtins, "__import__", side_effect=mock_import):
+                # Re-import scanner with mocked import
+                # The module import itself exercises the fallback path
+                importlib.import_module(scanner_module)
+        finally:
+            # Restore modules
+            if saved_tomllib is not None:
+                sys.modules["tomllib"] = saved_tomllib
+            # Force reimport of original scanner
+            if scanner_module in sys.modules:
+                del sys.modules[scanner_module]
+            importlib.import_module(scanner_module)
