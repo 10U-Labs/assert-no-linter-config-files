@@ -30,7 +30,4 @@ Homepage = "https://github.com/10U-Labs-LLC/assert-no-linter-config-files"
 Issues = "https://github.com/10U-Labs-LLC/assert-no-linter-config-files/issues"
 Repository = "https://github.com/10U-Labs-LLC/assert-no-linter-config-files"
 
-[tool.pylint."messages control"]
-disable = ["too-few-public-methods", "wrong-import-order", "import-outside-toplevel"]
-
 [tool.setuptools_scm]

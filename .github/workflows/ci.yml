@@ -26,7 +26,6 @@ jobs:
         uses: 10U-Labs-LLC/assert-no-linter-config-files@latest
         with:
           directories: .
-          exclude: "**/pyproject.toml"
           linters: jscpd,mypy,pylint,pytest,yamllint
           verbose: true
       - continue-on-error: true
@@ -55,11 +54,15 @@ jobs:
       - continue-on-error: true
         id: pylint_src
         name: pylint (src)
-        run: python3 -m pylint src/ --fail-on=C,R,W --fail-under=10.0
+        run: |
+          python3 -m pylint src/ --fail-on=C,R,W --fail-under=10.0 \
+            --disable=import-outside-toplevel,too-few-public-methods
       - continue-on-error: true
         id: pylint_test
         name: pylint (test)
-        run: python3 -m pylint test/ --fail-on=C,R,W --fail-under=10.0
+        run: |
+          python3 -m pylint test/ --fail-on=C,R,W --fail-under=10.0 \
+            --disable=import-outside-toplevel,too-few-public-methods
       - continue-on-error: true
         id: mypy_src
         name: mypy (src)
