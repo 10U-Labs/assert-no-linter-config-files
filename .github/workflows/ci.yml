@@ -20,11 +20,18 @@ jobs:
         run: |
           pip install yamllint pylint pytest mypy pytest-cov -e .
           npm install -g markdownlint-cli jscpd
-      - name: Check for inline lint disables
+      - name: Assert no linter config files
+        uses: 10U-Labs-LLC/assert-no-linter-config-files@latest
+        with:
+          directories: .
+          linters: jscpd,mypy,pylint,pytest,yamllint
+          verbose: true
+      - name: Assert no inline lint disables
         uses: 10U-Labs-LLC/assert-no-inline-lint-disables@latest
         with:
-          files: src/**/*.py test/**/*.py .github/workflows/*.yml
-          linters: pylint,mypy,yamllint
+          files: "**/*.py **/*.yml"
+          linters: mypy,pylint,yamllint
+          verbose: true
       - continue-on-error: true
         id: yamllint
         name: yamllint

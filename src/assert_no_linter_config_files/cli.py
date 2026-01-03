@@ -8,6 +8,7 @@ from pathlib import Path
 from .scanner import (
     VALID_LINTERS,
     Finding,
+    get_config_files_for_linters,
     parse_linters,
     scan_directory,
 )
@@ -181,6 +182,9 @@ def main() -> None:
 
     if args.verbose:
         print(f"Checking for: {', '.join(sorted(linters))}")
+        config_files = get_config_files_for_linters(linters)
+        for linter, configs in config_files.items():
+            print(f"  {linter}: {', '.join(configs)}")
 
     all_findings: list[Finding] = []
     had_error = False

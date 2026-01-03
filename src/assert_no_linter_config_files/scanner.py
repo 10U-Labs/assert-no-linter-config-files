@@ -37,6 +37,61 @@ DEDICATED_CONFIG_FILES: dict[str, str] = {
     ".jscpdrc.yaml": "jscpd",
 }
 
+SHARED_CONFIG_SECTIONS: dict[str, dict[str, str]] = {
+    "pylint": {
+        "pyproject.toml": "[tool.pylint.*]",
+        "setup.cfg": "[pylint.*]",
+        "tox.ini": "[pylint.*]",
+    },
+    "pytest": {
+        "pyproject.toml": "[tool.pytest.ini_options]",
+        "setup.cfg": "[tool:pytest]",
+        "tox.ini": "[pytest] or [tool:pytest]",
+    },
+    "mypy": {
+        "pyproject.toml": "[tool.mypy]",
+        "setup.cfg": "[mypy]",
+        "tox.ini": "[mypy]",
+    },
+    "yamllint": {
+        "pyproject.toml": "[tool.yamllint.*]",
+    },
+    "jscpd": {
+        "pyproject.toml": "[tool.jscpd.*]",
+    },
+}
+
+
+def get_config_files_for_linters(linters: frozenset[str]) -> dict[str, list[str]]:
+    """Get the config files that will be checked for each linter.
+
+    Args:
+        linters: Set of linter names to get config files for.
+
+    Returns:
+        Dictionary mapping each linter to its list of config file descriptions.
+    """
+    result: dict[str, list[str]] = {}
+
+    for linter in sorted(linters):
+        configs: list[str] = []
+
+        # Add dedicated config files
+        dedicated = sorted(
+            filename for filename, tool in DEDICATED_CONFIG_FILES.items()
+            if tool == linter
+        )
+        configs.extend(dedicated)
+
+        # Add shared config sections
+        if linter in SHARED_CONFIG_SECTIONS:
+            for shared_file, section in SHARED_CONFIG_SECTIONS[linter].items():
+                configs.append(f"{section} in {shared_file}")
+
+        result[linter] = configs
+
+    return result
+
 
 def make_path_relative(path: str) -> str:
     """Convert an absolute path to a relative path from cwd."""
