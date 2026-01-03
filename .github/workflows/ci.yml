@@ -44,7 +44,7 @@ jobs:
           KEY_ORDERING='key-ordering: enable'
           TRUTHY='truthy: {allowed-values: ["true", "false", "on"]}'
           RULES="$EMPTY_LINES, $KEY_ORDERING, $TRUTHY"
-          yamllint --strict \
+          yamllint --strict --format github \
             --config-data "{extends: default, rules: {$RULES}}" \
             .github/workflows/*.yml
       - continue-on-error: true
@@ -155,3 +155,4 @@ on:
       - "pyproject.toml"
       - "src/**"
       - "test/**"
+  workflow_dispatch:
