@@ -26,6 +26,10 @@ inputs:
     default: "false"
     description: Suppress output, exit code only
     required: false
+  verbose:
+    default: "false"
+    description: Show linters, directories scanned, findings, and summary
+    required: false
   warn-only:
     default: "false"
     description: Always exit 0, report only
@@ -41,6 +45,7 @@ runs:
         [ "${{ inputs.count }}" = "true" ] && ARGS="$ARGS --count"
         [ "${{ inputs.json }}" = "true" ] && ARGS="$ARGS --json"
         [ "${{ inputs.fail-fast }}" = "true" ] && ARGS="$ARGS --fail-fast"
+        [ "${{ inputs.verbose }}" = "true" ] && ARGS="$ARGS --verbose"
         [ "${{ inputs.warn-only }}" = "true" ] && ARGS="$ARGS --warn-only"
         for pattern in ${{ inputs.exclude }}; do
           ARGS="$ARGS --exclude '$pattern'"

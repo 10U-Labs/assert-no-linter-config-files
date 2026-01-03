@@ -63,6 +63,12 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Output findings as JSON.",
     )
+    output_group.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Show linters, directories scanned, findings, and summary.",
+    )
 
     # Behavior modifiers (mutually exclusive)
     behavior_group = parser.add_mutually_exclusive_group()
@@ -107,8 +113,12 @@ def main() -> None:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(EXIT_ERROR)
 
+    if args.verbose:
+        print(f"Checking for: {', '.join(sorted(linters))}")
+
     all_findings: list[Finding] = []
     had_error = False
+    dirs_scanned = 0
 
     for directory in args.directories:
         if not directory.is_dir():
@@ -116,17 +126,31 @@ def main() -> None:
             had_error = True
             continue
 
+        if args.verbose:
+            print(f"Scanning: {directory}")
+
         try:
             findings = scan_directory(
                 directory,
                 linters=linters,
                 exclude_patterns=args.exclude,
             )
+            dirs_scanned += 1
 
             if findings and args.fail_fast:
-                if not args.quiet:
+                if args.verbose:
+                    print(findings[0])
+                    print(
+                        f"Scanned {dirs_scanned} directory(ies), "
+                        f"found 1 finding"
+                    )
+                elif not args.quiet:
                     output_findings([findings[0]], args.json, args.count)
                 sys.exit(EXIT_FINDINGS)
+
+            if args.verbose:
+                for finding in findings:
+                    print(finding)
 
             all_findings.extend(findings)
         except OSError as e:
@@ -134,7 +158,12 @@ def main() -> None:
             had_error = True
 
     # Handle output
-    if not args.quiet:
+    if args.verbose:
+        print(
+            f"Scanned {dirs_scanned} directory(ies), "
+            f"found {len(all_findings)} finding(s)"
+        )
+    elif not args.quiet:
         output_findings(all_findings, args.json, args.count)
 
     # Determine exit code
