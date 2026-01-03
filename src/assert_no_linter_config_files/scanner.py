@@ -10,7 +10,7 @@ from pathlib import Path
 try:
     import tomllib
     HAS_TOMLLIB = True
-except ImportError:
+except ImportError:  # pragma: no cover (Python < 3.11)
     HAS_TOMLLIB = False
 
 VALID_LINTERS: frozenset[str] = frozenset({
@@ -206,9 +206,8 @@ def _process_shared_config_file(
         return check_pyproject_toml(file_path, content)
     if filename == "setup.cfg":
         return check_setup_cfg(file_path, content)
-    if filename == "tox.ini":
-        return check_tox_ini(file_path, content)
-    return []
+    # filename == "tox.ini"
+    return check_tox_ini(file_path, content)
 
 
 def _matches_exclude_pattern(

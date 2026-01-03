@@ -41,7 +41,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--exclude",
         action="append",
-        default=[],
+        default=None,
         metavar="PATTERN",
         help="Glob pattern to exclude paths (repeatable).",
     )

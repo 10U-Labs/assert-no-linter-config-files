@@ -566,6 +566,24 @@ class TestGitDirectorySkipping:
 
 
 @pytest.mark.integration
+class TestOSErrorHandling:
+    """Tests for OS-level error handling."""
+
+    def test_oserror_on_file_read_failure(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """OSError when file cannot be read triggers error handling."""
+        # Create a pyproject.toml that will cause read_text to fail
+        bad_file = tmp_path / "pyproject.toml"
+        bad_file.symlink_to("/dev/null/nonexistent")
+        code, _, stderr = run_main_with_args([
+            "--linters", "pylint", str(tmp_path)
+        ])
+        assert code == 2
+        assert "Error reading" in stderr
+
+
+@pytest.mark.integration
 class TestInvalidConfigFiles:
     """Tests for invalid config file handling."""
 
