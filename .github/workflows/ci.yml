@@ -20,13 +20,17 @@ jobs:
         run: |
           pip install yamllint pylint pytest mypy pytest-cov -e .
           npm install -g markdownlint-cli jscpd
-      - name: Assert no linter config files
+      - continue-on-error: true
+        id: assert_no_linter_config_files
+        name: Assert no linter config files
         uses: 10U-Labs-LLC/assert-no-linter-config-files@latest
         with:
           directories: .
           linters: jscpd,mypy,pylint,pytest,yamllint
           verbose: true
-      - name: Assert no inline lint disables
+      - continue-on-error: true
+        id: assert_no_inline_lint_disables
+        name: Assert no inline lint disables
         uses: 10U-Labs-LLC/assert-no-inline-lint-disables@latest
         with:
           files: "**/*.py **/*.yml"
@@ -92,6 +96,8 @@ jobs:
         name: E2E tests
         run: python3 -m pytest test/e2e/ --verbose --pythonwarnings=error
       - env:
+          ASSERT_NO_INLINE_LINT_DISABLES: ${{ steps.assert_no_inline_lint_disables.outcome }}
+          ASSERT_NO_LINTER_CONFIG_FILES: ${{ steps.assert_no_linter_config_files.outcome }}
           E2E_TESTS: ${{ steps.e2e_tests.outcome }}
           INTEGRATION_TESTS: ${{ steps.integration_tests.outcome }}
           JSCPD_SRC: ${{ steps.jscpd_src.outcome }}
@@ -106,6 +112,10 @@ jobs:
         name: Assert no step failed
         run: |
           failed=""
+          [ "$ASSERT_NO_LINTER_CONFIG_FILES" = "failure" ] && \
+            failed="$failed assert_no_linter_config_files"
+          [ "$ASSERT_NO_INLINE_LINT_DISABLES" = "failure" ] && \
+            failed="$failed assert_no_inline_lint_disables"
           [ "$YAMLLINT" = "failure" ] && failed="$failed yamllint"
           [ "$MARKDOWNLINT" = "failure" ] && failed="$failed markdownlint"
           [ "$PYLINT_SRC" = "failure" ] && failed="$failed pylint_src"

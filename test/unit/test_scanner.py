@@ -10,6 +10,7 @@ import pytest
 
 from assert_no_linter_config_files.scanner import (
     DEDICATED_CONFIG_FILES,
+    SHARED_CONFIG_SECTIONS,
     VALID_LINTERS,
     Finding,
     _check_pyproject_with_regex,
@@ -17,6 +18,7 @@ from assert_no_linter_config_files.scanner import (
     check_pyproject_toml,
     check_setup_cfg,
     check_tox_ini,
+    get_config_files_for_linters,
     make_path_relative,
     parse_linters,
     scan_directory,
@@ -364,6 +366,88 @@ class TestDedicatedConfigFilesMapping:
         for filename, tool in DEDICATED_CONFIG_FILES.items():
             if "jscpd" in filename:
                 assert tool == "jscpd"
+
+
+@pytest.mark.unit
+class TestGetConfigFilesForLinters:
+    """Tests for the get_config_files_for_linters function."""
+
+    def test_single_linter_returns_dedicated_files(self) -> None:
+        """Single linter returns its dedicated config files."""
+        result = get_config_files_for_linters(frozenset({"pylint"}))
+        assert "pylint" in result
+        assert ".pylintrc" in result["pylint"]
+        assert "pylintrc" in result["pylint"]
+        assert ".pylintrc.toml" in result["pylint"]
+
+    def test_single_linter_returns_shared_sections(self) -> None:
+        """Single linter returns shared config sections."""
+        result = get_config_files_for_linters(frozenset({"mypy"}))
+        assert "mypy" in result
+        assert "[tool.mypy] in pyproject.toml" in result["mypy"]
+        assert "[mypy] in setup.cfg" in result["mypy"]
+        assert "[mypy] in tox.ini" in result["mypy"]
+
+    def test_multiple_linters_returns_all(self) -> None:
+        """Multiple linters returns configs for each."""
+        result = get_config_files_for_linters(frozenset({"pylint", "mypy"}))
+        assert len(result) == 2
+        assert "pylint" in result
+        assert "mypy" in result
+
+    def test_results_sorted_by_linter(self) -> None:
+        """Results are sorted alphabetically by linter name."""
+        result = get_config_files_for_linters(frozenset({"yamllint", "mypy", "pylint"}))
+        linter_order = list(result.keys())
+        assert linter_order == ["mypy", "pylint", "yamllint"]
+
+    def test_dedicated_files_sorted(self) -> None:
+        """Dedicated config files are sorted alphabetically."""
+        result = get_config_files_for_linters(frozenset({"pylint"}))
+        dedicated = [f for f in result["pylint"] if "in" not in f]
+        assert dedicated == sorted(dedicated)
+
+    def test_linter_without_shared_sections(self) -> None:
+        """Linter with only dedicated files works correctly."""
+        # yamllint only has pyproject.toml shared section
+        result = get_config_files_for_linters(frozenset({"yamllint"}))
+        assert ".yamllint" in result["yamllint"]
+        assert "[tool.yamllint.*] in pyproject.toml" in result["yamllint"]
+
+    def test_all_valid_linters(self) -> None:
+        """All valid linters return non-empty config lists."""
+        result = get_config_files_for_linters(VALID_LINTERS)
+        assert len(result) == len(VALID_LINTERS)
+        for linter, configs in result.items():
+            assert len(configs) > 0, f"{linter} has no configs"
+
+
+@pytest.mark.unit
+class TestSharedConfigSectionsMapping:
+    """Tests for the SHARED_CONFIG_SECTIONS mapping."""
+
+    def test_all_linters_have_pyproject_section(self) -> None:
+        """All linters in SHARED_CONFIG_SECTIONS have pyproject.toml."""
+        for linter, sections in SHARED_CONFIG_SECTIONS.items():
+            assert "pyproject.toml" in sections, f"{linter} missing pyproject.toml"
+
+    def test_pylint_has_all_shared_files(self) -> None:
+        """Pylint has sections in all shared config files."""
+        assert "pyproject.toml" in SHARED_CONFIG_SECTIONS["pylint"]
+        assert "setup.cfg" in SHARED_CONFIG_SECTIONS["pylint"]
+        assert "tox.ini" in SHARED_CONFIG_SECTIONS["pylint"]
+
+    def test_mypy_has_all_shared_files(self) -> None:
+        """Mypy has sections in all shared config files."""
+        assert "pyproject.toml" in SHARED_CONFIG_SECTIONS["mypy"]
+        assert "setup.cfg" in SHARED_CONFIG_SECTIONS["mypy"]
+        assert "tox.ini" in SHARED_CONFIG_SECTIONS["mypy"]
+
+    def test_pytest_has_all_shared_files(self) -> None:
+        """Pytest has sections in all shared config files."""
+        assert "pyproject.toml" in SHARED_CONFIG_SECTIONS["pytest"]
+        assert "setup.cfg" in SHARED_CONFIG_SECTIONS["pytest"]
+        assert "tox.ini" in SHARED_CONFIG_SECTIONS["pytest"]
 
 
 @pytest.mark.unit

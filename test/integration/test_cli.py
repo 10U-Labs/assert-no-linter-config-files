@@ -274,6 +274,21 @@ class TestVerboseFlag:
         assert "mypy" in stdout
         assert "pylint" in stdout
 
+    def test_verbose_shows_config_files_per_linter(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """--verbose shows config files for each linter."""
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
+        ])
+        assert code == 0
+        # Check pylint config files are listed
+        assert ".pylintrc" in stdout
+        assert "[tool.pylint.*] in pyproject.toml" in stdout
+        # Check mypy config files are listed
+        assert "mypy.ini" in stdout
+        assert "[tool.mypy] in pyproject.toml" in stdout
+
     def test_verbose_shows_scanning(self, tmp_path: Path, run_main_with_args) -> None:
         """--verbose shows directories being scanned."""
         code, stdout, _ = run_main_with_args([
