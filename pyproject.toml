@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "setuptools-scm>=8.0"]
 
 [project]
 authors = [{name = "10U Labs", email = "dev@10ulabs.com"}]
@@ -18,9 +18,9 @@ classifiers = [
 description = "CLI tool to assert that no linter config files exist"
 license = "Apache-2.0"
 name = "assert-no-linter-config-files"
+dynamic = ["version"]
 readme = "README.md"
 requires-python = ">=3.10"
-version = "1.1.0"
 
 [project.scripts]
 assert-no-linter-config-files = "assert_no_linter_config_files.cli:main"
@@ -32,3 +32,5 @@ Repository = "https://github.com/10U-Labs-LLC/assert-no-linter-config-files"
 
 [tool.pylint."messages control"]
 disable = ["too-few-public-methods", "wrong-import-order", "import-outside-toplevel"]
+
+[tool.setuptools_scm]
