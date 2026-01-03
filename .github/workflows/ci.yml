@@ -137,7 +137,6 @@ jobs:
           echo "All steps succeeded"
 name: CI
 on:
-  workflow_dispatch:
   pull_request:
     branches:
       - main
@@ -156,3 +155,4 @@ on:
       - "pyproject.toml"
       - "src/**"
       - "test/**"
+  workflow_dispatch:
