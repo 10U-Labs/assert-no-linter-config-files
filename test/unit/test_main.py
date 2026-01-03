@@ -13,19 +13,15 @@ import pytest
 class TestMainModule:
     """Tests for the __main__.py entry point."""
 
-    def test_module_runs_main(self, tmp_path):
+    def test_module_runs_main(self, tmp_path: Path) -> None:
         """python -m assert_no_linter_config_files runs main()."""
         env = os.environ.copy()
         src_path = Path(__file__).parent.parent.parent / "src"
         env["PYTHONPATH"] = str(src_path.resolve())
-        result = subprocess.run(
-            [sys.executable, "-m", "assert_no_linter_config_files",
-             "--linters", "pylint", str(tmp_path)],
-            capture_output=True,
-            text=True,
-            env=env,
-            check=False,
-        )
+        cmd = [sys.executable, "-m", "assert_no_linter_config_files"]
+        cmd.extend(["--linters", "mypy", str(tmp_path)])
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env,
+                                check=False)
         assert result.returncode == 0
 
     def test_module_imports_and_calls_main(self):

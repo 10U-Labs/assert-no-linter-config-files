@@ -1,6 +1,10 @@
 """Integration tests for the CLI module."""
 
+import runpy
+import subprocess
+import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -146,6 +150,16 @@ class TestLintersFlag:
             "--linters", "invalid", str(tmp_path)
         ])
         assert code == 2
+
+    def test_linters_empty_exits_2(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """--linters with empty string exits 2."""
+        code, _, stderr = run_main_with_args([
+            "--linters", "", str(tmp_path)
+        ])
+        assert code == 2
+        assert "At least one linter" in stderr
 
 
 @pytest.mark.integration
@@ -323,3 +337,303 @@ class TestVerboseFlag:
         assert code == 0
         assert stdout.count("Scanning:") == 2
         assert "Scanned 2 directory(ies)" in stdout
+
+
+@pytest.mark.integration
+class TestPyprojectTomlSections:
+    """Tests for pyproject.toml section detection through CLI."""
+
+    def test_tool_pylint_section(self, tmp_path: Path, run_main_with_args) -> None:
+        """Detect [tool.pylint] section in pyproject.toml."""
+        content = "[tool.pylint]\nmax-line-length = 100\n"
+        (tmp_path / "pyproject.toml").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pylint", str(tmp_path)
+        ])
+        assert code == 1
+        assert "pylint" in stdout
+        assert "tool.pylint" in stdout
+
+    def test_tool_pytest_ini_options(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """Detect [tool.pytest.ini_options] section."""
+        content = "[tool.pytest.ini_options]\naddopts = '-v'\n"
+        (tmp_path / "pyproject.toml").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pytest", str(tmp_path)
+        ])
+        assert code == 1
+        assert "pytest" in stdout
+        assert "tool.pytest.ini_options" in stdout
+
+    def test_tool_jscpd_section(self, tmp_path: Path, run_main_with_args) -> None:
+        """Detect [tool.jscpd] section."""
+        content = "[tool.jscpd]\nthreshold = 0\n"
+        (tmp_path / "pyproject.toml").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "jscpd", str(tmp_path)
+        ])
+        assert code == 1
+        assert "jscpd" in stdout
+        assert "tool.jscpd" in stdout
+
+    def test_tool_yamllint_section(self, tmp_path: Path, run_main_with_args) -> None:
+        """Detect [tool.yamllint] section."""
+        content = "[tool.yamllint]\nrules = {}\n"
+        (tmp_path / "pyproject.toml").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "yamllint", str(tmp_path)
+        ])
+        assert code == 1
+        assert "yamllint" in stdout
+        assert "tool.yamllint" in stdout
+
+    def test_invalid_toml_falls_back_to_regex_mypy(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """Invalid TOML falls back to regex detection for mypy."""
+        content = "[tool.mypy]\nstrict = {\n"
+        (tmp_path / "pyproject.toml").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "mypy", str(tmp_path)
+        ])
+        assert code == 1
+        assert "mypy" in stdout
+
+    def test_invalid_toml_falls_back_to_regex_pylint(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """Invalid TOML falls back to regex detection for pylint."""
+        content = "[tool.pylint]\nmax-line = {\n"
+        (tmp_path / "pyproject.toml").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pylint", str(tmp_path)
+        ])
+        assert code == 1
+        assert "pylint" in stdout
+
+    def test_invalid_toml_falls_back_to_regex_pytest(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """Invalid TOML falls back to regex detection for pytest."""
+        content = "[tool.pytest.ini_options]\naddopts = {\n"
+        (tmp_path / "pyproject.toml").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pytest", str(tmp_path)
+        ])
+        assert code == 1
+        assert "pytest" in stdout
+
+    def test_invalid_toml_falls_back_to_regex_jscpd(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """Invalid TOML falls back to regex detection for jscpd."""
+        content = "[tool.jscpd]\nthreshold = {\n"
+        (tmp_path / "pyproject.toml").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "jscpd", str(tmp_path)
+        ])
+        assert code == 1
+        assert "jscpd" in stdout
+
+    def test_invalid_toml_falls_back_to_regex_yamllint(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """Invalid TOML falls back to regex detection for yamllint."""
+        content = "[tool.yamllint]\nrules = {\n"
+        (tmp_path / "pyproject.toml").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "yamllint", str(tmp_path)
+        ])
+        assert code == 1
+        assert "yamllint" in stdout
+
+
+@pytest.mark.integration
+class TestSetupCfgSections:
+    """Tests for setup.cfg section detection through CLI."""
+
+    def test_mypy_section(self, tmp_path: Path, run_main_with_args) -> None:
+        """Detect [mypy] section in setup.cfg."""
+        content = "[mypy]\nstrict = True\n"
+        (tmp_path / "setup.cfg").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "mypy", str(tmp_path)
+        ])
+        assert code == 1
+        assert "mypy" in stdout
+        assert "mypy section" in stdout
+
+    def test_tool_pytest_section(self, tmp_path: Path, run_main_with_args) -> None:
+        """Detect [tool:pytest] section in setup.cfg."""
+        content = "[tool:pytest]\naddopts = -v\n"
+        (tmp_path / "setup.cfg").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pytest", str(tmp_path)
+        ])
+        assert code == 1
+        assert "pytest" in stdout
+        assert "tool:pytest" in stdout
+
+    def test_pylint_section(self, tmp_path: Path, run_main_with_args) -> None:
+        """Detect section containing 'pylint' in setup.cfg."""
+        content = "[pylint.messages_control]\ndisable = C0114\n"
+        (tmp_path / "setup.cfg").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pylint", str(tmp_path)
+        ])
+        assert code == 1
+        assert "pylint" in stdout
+
+
+@pytest.mark.integration
+class TestToxIniSections:
+    """Tests for tox.ini section detection through CLI."""
+
+    def test_pytest_section(self, tmp_path: Path, run_main_with_args) -> None:
+        """Detect [pytest] section in tox.ini."""
+        content = "[pytest]\naddopts = -v\n"
+        (tmp_path / "tox.ini").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pytest", str(tmp_path)
+        ])
+        assert code == 1
+        assert "pytest" in stdout
+
+    def test_tool_pytest_section(self, tmp_path: Path, run_main_with_args) -> None:
+        """Detect [tool:pytest] section in tox.ini."""
+        content = "[tool:pytest]\naddopts = -v\n"
+        (tmp_path / "tox.ini").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pytest", str(tmp_path)
+        ])
+        assert code == 1
+        assert "pytest" in stdout
+
+    def test_mypy_section(self, tmp_path: Path, run_main_with_args) -> None:
+        """Detect [mypy] section in tox.ini."""
+        content = "[mypy]\nstrict = True\n"
+        (tmp_path / "tox.ini").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "mypy", str(tmp_path)
+        ])
+        assert code == 1
+        assert "mypy" in stdout
+
+    def test_pylint_section(self, tmp_path: Path, run_main_with_args) -> None:
+        """Detect section containing 'pylint' in tox.ini."""
+        content = "[pylint]\ndisable = C0114\n"
+        (tmp_path / "tox.ini").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pylint", str(tmp_path)
+        ])
+        assert code == 1
+        assert "pylint" in stdout
+
+
+@pytest.mark.integration
+class TestGitDirectorySkipping:
+    """Tests for .git directory skipping."""
+
+    def test_git_directory_is_skipped(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """Config files inside .git directory are ignored."""
+        git_dir = tmp_path / ".git"
+        git_dir.mkdir()
+        (git_dir / ".pylintrc").touch()
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pylint", str(tmp_path)
+        ])
+        assert code == 0
+        assert stdout == ""
+
+    def test_nested_git_directory_is_skipped(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """Config files in nested .git directories are ignored."""
+        subdir = tmp_path / "subdir"
+        subdir.mkdir()
+        git_dir = subdir / ".git"
+        git_dir.mkdir()
+        (git_dir / ".pylintrc").touch()
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pylint", str(tmp_path)
+        ])
+        assert code == 0
+        assert stdout == ""
+
+
+@pytest.mark.integration
+class TestInvalidConfigFiles:
+    """Tests for invalid config file handling."""
+
+    def test_invalid_setup_cfg_is_ignored(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """Invalid setup.cfg syntax is gracefully ignored."""
+        # Content that will cause configparser to fail
+        content = "[section\nmissing closing bracket"
+        (tmp_path / "setup.cfg").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pylint", str(tmp_path)
+        ])
+        assert code == 0
+        assert stdout == ""
+
+    def test_invalid_tox_ini_is_ignored(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """Invalid tox.ini syntax is gracefully ignored."""
+        # Content that will cause configparser to fail
+        content = "[section\nmissing closing bracket"
+        (tmp_path / "tox.ini").write_text(content)
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pytest", str(tmp_path)
+        ])
+        assert code == 0
+        assert stdout == ""
+
+
+@pytest.mark.integration
+class TestModuleEntryPoint:
+    """Tests for python -m entry point."""
+
+    def test_module_entry_point(self, tmp_path: Path) -> None:
+        """Can run as python -m assert_no_linter_config_files."""
+        result = subprocess.run(
+            [sys.executable, "-m", "assert_no_linter_config_files",
+             "--linters", "pylint", str(tmp_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0
+
+    def test_module_entry_point_with_findings(self, tmp_path: Path) -> None:
+        """Module entry point exits 1 when findings exist."""
+        (tmp_path / ".pylintrc").touch()
+        result = subprocess.run(
+            [sys.executable, "-m", "assert_no_linter_config_files",
+             "--linters", "pylint", str(tmp_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 1
+        assert "pylint" in result.stdout
+
+    def test_main_module_runpy(self, tmp_path: Path) -> None:
+        """Test __main__ module via runpy (in-process execution)."""
+        with patch.object(sys, "argv", [
+            "assert_no_linter_config_files",
+            "--linters", "pylint", str(tmp_path)
+        ]):
+            with pytest.raises(SystemExit) as exc_info:
+                runpy.run_module(
+                    "assert_no_linter_config_files",
+                    run_name="__main__",
+                    alter_sys=True
+                )
+            assert exc_info.value.code == 0

@@ -1,6 +1,7 @@
 """Unit tests for the cli module."""
 
 import argparse
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,6 +15,7 @@ from assert_no_linter_config_files.cli import (
     EXIT_ERROR,
     EXIT_FINDINGS,
     EXIT_SUCCESS,
+    output_findings,
 )
 from assert_no_linter_config_files.scanner import Finding
 
@@ -196,3 +198,97 @@ class TestQuietWithFailFast:
         ])
         assert code == 1
         assert stdout == ""
+
+
+@pytest.mark.unit
+class TestOutputFindings:
+    """Tests for output_findings helper."""
+
+    def test_json_output(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """--json outputs findings as JSON array."""
+        findings = [
+            Finding("./test.py", "pylint", "config file"),
+            Finding("./mypy.ini", "mypy", "config file"),
+        ]
+        output_findings(findings, use_json=True, use_count=False)
+        captured = capsys.readouterr()
+        parsed = json.loads(captured.out)
+        assert len(parsed) == 2
+        assert parsed[0]["tool"] == "pylint"
+        assert parsed[1]["tool"] == "mypy"
+
+    def test_count_output(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """--count outputs finding count only."""
+        findings = [
+            Finding("./test.py", "pylint", "config file"),
+            Finding("./mypy.ini", "mypy", "config file"),
+        ]
+        output_findings(findings, use_json=False, use_count=True)
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "2"
+
+    def test_default_output(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Default output prints each finding."""
+        findings = [Finding("./test.py", "pylint", "config file")]
+        output_findings(findings, use_json=False, use_count=False)
+        captured = capsys.readouterr()
+        assert "pylint" in captured.out
+        assert "config file" in captured.out
+
+
+@pytest.mark.unit
+class TestMainInvalidLinter:
+    """Tests for invalid linter handling in main()."""
+
+    def test_invalid_linter_exits_2(self, tmp_path: Path, run_main_with_args) -> None:
+        """Invalid linter name exits with code 2."""
+        code, _, stderr = run_main_with_args([
+            "--linters", "invalid_linter", str(tmp_path)
+        ])
+        assert code == 2
+        assert "Invalid linter" in stderr
+
+
+@pytest.mark.unit
+class TestMainVerbose:
+    """Tests for verbose output in main()."""
+
+    def test_verbose_prints_linters(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """--verbose prints which linters are being checked."""
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
+        ])
+        assert code == 0
+        assert "Checking for:" in stdout
+        assert "pylint" in stdout
+        assert "mypy" in stdout
+
+    def test_verbose_prints_summary(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """--verbose prints summary at end."""
+        code, stdout, _ = run_main_with_args([
+            "--linters", "pylint", "--verbose", str(tmp_path)
+        ])
+        assert code == 0
+        assert "Scanned" in stdout
+        assert "finding(s)" in stdout
+
+
+@pytest.mark.unit
+class TestMainNonDirectory:
+    """Tests for non-directory path handling in main()."""
+
+    def test_file_instead_of_directory_exits_2(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """Providing a file instead of directory exits with code 2."""
+        file_path = tmp_path / "file.txt"
+        file_path.touch()
+        code, _, stderr = run_main_with_args([
+            "--linters", "pylint", str(file_path)
+        ])
+        assert code == 2
+        assert "is not a directory" in stderr

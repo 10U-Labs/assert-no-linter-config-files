@@ -70,7 +70,8 @@ jobs:
         run: |
           python3 -m pytest test/unit/ \
             --verbose --pythonwarnings=error \
-            --cov=assert_no_linter_config_files
+            --cov=assert_no_linter_config_files \
+            --cov-fail-under=100
       - continue-on-error: true
         id: integration_tests
         name: Integration tests
@@ -78,7 +79,7 @@ jobs:
           python3 -m pytest test/integration/ \
             --verbose --pythonwarnings=error \
             --cov=assert_no_linter_config_files \
-            --cov-append --cov-fail-under=100
+            --cov-fail-under=95
       - continue-on-error: true
         id: e2e_tests
         name: E2E tests
