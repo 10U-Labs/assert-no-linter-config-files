@@ -5,18 +5,6 @@ configuration sections) for common linters in your codebase. This is useful for
 enforcing that linter configurations are managed centrally rather than in
 individual repositories.
 
-## Installation
-
-```bash
-pip install assert-no-linter-config-files
-```
-
-Or install from source:
-
-```bash
-pip install -e .
-```
-
 ## Usage
 
 ```bash
@@ -25,7 +13,7 @@ assert-no-linter-config-files --linters LINTERS [OPTIONS] DIRECTORY [DIRECTORY .
 
 ### Required Arguments
 
-- `--linters LINTERS` - Comma-separated linters to check: `pylint,mypy,pytest,yamllint,jscpd`
+- `--linters LINTERS` - Comma-separated linters to check: `jscpd,mypy,pylint,pytest,yamllint`
 - `DIRECTORY` - One or more directories to scan
 
 ### Optional Arguments
@@ -88,16 +76,16 @@ assert-no-linter-config-files --linters pylint,mypy . || exit 1
 
 The tool flags the presence of these files anywhere in the scanned tree:
 
+**jscpd:** `.jscpd.json`, `.jscpd.yml`, `.jscpd.yaml`, `.jscpd.toml`,
+`.jscpdrc`, `.jscpdrc.json`, `.jscpdrc.yml`, `.jscpdrc.yaml`
+
+**mypy:** `mypy.ini`, `.mypy.ini`
+
 **pylint:** `.pylintrc`, `pylintrc`, `.pylintrc.toml`
 
 **pytest:** `pytest.ini`
 
-**mypy:** `mypy.ini`, `.mypy.ini`
-
 **yamllint:** `.yamllint`, `.yamllint.yml`, `.yamllint.yaml`
-
-**jscpd:** `.jscpd.json`, `.jscpd.yml`, `.jscpd.yaml`, `.jscpd.toml`,
-`.jscpdrc`, `.jscpdrc.json`, `.jscpdrc.yml`, `.jscpdrc.yaml`
 
 ### Embedded Config Sections
 
@@ -105,23 +93,23 @@ The tool also checks shared config files for tool-specific sections:
 
 **pyproject.toml:**
 
-- `[tool.pylint]` or `[tool.pylint.*]`
-- `[tool.mypy]`
-- `[tool.pytest.ini_options]`
 - `[tool.jscpd]`
+- `[tool.mypy]`
+- `[tool.pylint]` or `[tool.pylint.*]`
+- `[tool.pytest.ini_options]`
 - `[tool.yamllint]`
 
 **setup.cfg:**
 
 - `[mypy]`
-- `[tool:pytest]`
 - Any section containing "pylint"
+- `[tool:pytest]`
 
 **tox.ini:**
 
-- `[pytest]` or `[tool:pytest]`
 - `[mypy]`
 - Any section containing "pylint"
+- `[pytest]` or `[tool:pytest]`
 
 ## Output Format
 
@@ -145,13 +133,3 @@ With `--json`:
 [{"path": "./pytest.ini", "tool": "pytest", "reason": "config file"}]
 ```
 
-## CI Checks
-
-The following checks run on every push and pull request:
-
-- **yamllint** - YAML linting for workflow files
-- **markdownlint** - Markdown linting
-- **pylint** - Python linting for source and test code
-- **mypy** - Static type checking for source code
-- **jscpd** - Duplicate code detection
-- **pytest** - Unit, integration, and E2E tests
