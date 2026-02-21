@@ -120,6 +120,68 @@ class TestVerboseDisplay:
 
 
 @pytest.mark.integration
+class TestVerboseMarkdownlint:
+    """Tests for --verbose flag with markdownlint."""
+
+    @pytest.fixture
+    def verbose_markdownlint_result(
+        self, tmp_path: Path, run_main_with_args
+    ) -> tuple[int, str, str]:
+        """Run main() with --linters markdownlint --verbose."""
+        return run_main_with_args([
+            "--linters", "markdownlint", "--verbose", str(tmp_path)
+        ])
+
+    def test_verbose_markdownlint_exits_0(
+        self, verbose_markdownlint_result: tuple[int, str, str]
+    ) -> None:
+        """--verbose with markdownlint exits 0 when no config."""
+        code, _, _ = verbose_markdownlint_result
+        assert code == 0
+
+    def test_verbose_shows_markdownlint(
+        self, verbose_markdownlint_result: tuple[int, str, str]
+    ) -> None:
+        """--verbose shows markdownlint in linter list."""
+        _, stdout, _ = verbose_markdownlint_result
+        assert "markdownlint" in stdout
+
+    def test_verbose_shows_markdownlint_json(
+        self, verbose_markdownlint_result: tuple[int, str, str]
+    ) -> None:
+        """--verbose shows .markdownlint.json in config files."""
+        _, stdout, _ = verbose_markdownlint_result
+        assert ".markdownlint.json" in stdout
+
+    def test_verbose_shows_markdownlintrc(
+        self, verbose_markdownlint_result: tuple[int, str, str]
+    ) -> None:
+        """--verbose shows .markdownlintrc in config files."""
+        _, stdout, _ = verbose_markdownlint_result
+        assert ".markdownlintrc" in stdout
+
+    def test_verbose_markdownlint_finding_exits_1(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """--verbose exits 1 when markdownlint config found."""
+        (tmp_path / ".markdownlint.json").touch()
+        code, _, _ = run_main_with_args([
+            "--linters", "markdownlint", "--verbose", str(tmp_path)
+        ])
+        assert code == 1
+
+    def test_verbose_markdownlint_finding_shows_config_file(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """--verbose shows 'config file' for markdownlint finding."""
+        (tmp_path / ".markdownlint.json").touch()
+        _, stdout, _ = run_main_with_args([
+            "--linters", "markdownlint", "--verbose", str(tmp_path)
+        ])
+        assert "config file" in stdout
+
+
+@pytest.mark.integration
 class TestVerboseSummary:
     """Tests for --verbose flag summary and multi-directory output."""
 

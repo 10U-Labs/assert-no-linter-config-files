@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from assert_no_linter_config_files.scanner import (
+    DEDICATED_CONFIG_FILES,
     VALID_LINTERS,
     Finding,
     check_pyproject_toml,
@@ -14,33 +15,14 @@ from assert_no_linter_config_files.scanner import (
     scan_directory,
 )
 
+ALL_DEDICATED_FILENAMES: list[str] = sorted(DEDICATED_CONFIG_FILES.keys())
+
 
 @pytest.mark.unit
 class TestDedicatedConfigFiles:
     """Tests for detecting dedicated config files."""
 
-    @pytest.mark.parametrize(
-        "filename",
-        [
-            ".pylintrc",
-            "pylintrc",
-            ".pylintrc.toml",
-            "pytest.ini",
-            "mypy.ini",
-            ".mypy.ini",
-            ".yamllint",
-            ".yamllint.yml",
-            ".yamllint.yaml",
-            ".jscpd.json",
-            ".jscpd.yml",
-            ".jscpd.yaml",
-            ".jscpd.toml",
-            ".jscpdrc",
-            ".jscpdrc.json",
-            ".jscpdrc.yml",
-            ".jscpdrc.yaml",
-        ],
-    )
+    @pytest.mark.parametrize("filename", ALL_DEDICATED_FILENAMES)
     def test_dedicated_config_file_returns_one_finding(
         self, tmp_path: Path, filename: str
     ) -> None:
@@ -69,6 +51,11 @@ class TestDedicatedConfigFiles:
             (".jscpdrc.json", "jscpd"),
             (".jscpdrc.yml", "jscpd"),
             (".jscpdrc.yaml", "jscpd"),
+            (".markdownlint.json", "markdownlint"),
+            (".markdownlint.jsonc", "markdownlint"),
+            (".markdownlint.yaml", "markdownlint"),
+            (".markdownlint.yml", "markdownlint"),
+            (".markdownlintrc", "markdownlint"),
         ],
     )
     def test_dedicated_config_file_has_correct_tool(
@@ -79,28 +66,7 @@ class TestDedicatedConfigFiles:
         findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert findings[0].tool == expected_tool
 
-    @pytest.mark.parametrize(
-        "filename",
-        [
-            ".pylintrc",
-            "pylintrc",
-            ".pylintrc.toml",
-            "pytest.ini",
-            "mypy.ini",
-            ".mypy.ini",
-            ".yamllint",
-            ".yamllint.yml",
-            ".yamllint.yaml",
-            ".jscpd.json",
-            ".jscpd.yml",
-            ".jscpd.yaml",
-            ".jscpd.toml",
-            ".jscpdrc",
-            ".jscpdrc.json",
-            ".jscpdrc.yml",
-            ".jscpdrc.yaml",
-        ],
-    )
+    @pytest.mark.parametrize("filename", ALL_DEDICATED_FILENAMES)
     def test_dedicated_config_file_has_config_file_reason(
         self, tmp_path: Path, filename: str
     ) -> None:

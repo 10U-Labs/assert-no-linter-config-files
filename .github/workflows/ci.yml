@@ -95,7 +95,7 @@ jobs:
       - name: Assert no linter config files
         run: |
           assert-no-linter-config-files --verbose \
-            --linters jscpd,mypy,pylint,pytest,yamllint .
+            --linters jscpd,markdownlint,mypy,pylint,pytest,yamllint .
       - name: Assert one assert per pytest
         run: assert-one-assert-per-pytest --verbose 'test/**/*.py'
       - name: Assert no inline lint disables

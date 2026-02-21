@@ -14,7 +14,7 @@ except ImportError:  # pragma: no cover (Python < 3.11)
     HAS_TOMLLIB = False
 
 VALID_LINTERS: frozenset[str] = frozenset({
-    "pylint", "pytest", "mypy", "yamllint", "jscpd"
+    "pylint", "pytest", "mypy", "yamllint", "jscpd", "markdownlint"
 })
 
 DEDICATED_CONFIG_FILES: dict[str, str] = {
@@ -35,6 +35,11 @@ DEDICATED_CONFIG_FILES: dict[str, str] = {
     ".jscpdrc.json": "jscpd",
     ".jscpdrc.yml": "jscpd",
     ".jscpdrc.yaml": "jscpd",
+    ".markdownlint.json": "markdownlint",
+    ".markdownlint.jsonc": "markdownlint",
+    ".markdownlint.yaml": "markdownlint",
+    ".markdownlint.yml": "markdownlint",
+    ".markdownlintrc": "markdownlint",
 }
 
 SHARED_CONFIG_SECTIONS: dict[str, dict[str, str]] = {
