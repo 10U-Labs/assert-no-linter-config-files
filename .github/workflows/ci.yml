@@ -89,20 +89,17 @@ jobs:
           node-version: "20"
       - name: Install dependencies
         run: |
-          pip install yamllint pylint mypy -e .
+          pip install yamllint pylint mypy assert-no-inline-directives -e .
           npm install -g markdownlint-cli jscpd
       - name: Assert no linter config files
-        uses: 10U-Labs-LLC/assert-no-linter-config-files@latest
-        with:
-          directories: .
-          linters: jscpd,mypy,pylint,pytest,yamllint
-          verbose: true
+        run: |
+          assert-no-linter-config-files --verbose \
+            --linters jscpd,mypy,pylint,pytest,yamllint .
       - name: Assert no inline lint disables
-        uses: 10U-Labs-LLC/assert-no-inline-lint-disables@latest
-        with:
-          files: "**/*.py **/*.toml **/*.yml"
-          linters: mypy,pylint,yamllint
-          verbose: true
+        run: |
+          assert-no-inline-directives --verbose \
+            --tools mypy,pylint,yamllint \
+            '**/*.py' '**/*.toml' '**/*.yml'
       - name: yamllint
         run: |
           EMPTY_LINES='empty-lines: {max: 0, max-start: 0, max-end: 1}'
