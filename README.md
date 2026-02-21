@@ -132,4 +132,3 @@ With `--json`:
 ```json
 [{"path": "./pytest.ini", "tool": "pytest", "reason": "config file"}]
 ```
-
