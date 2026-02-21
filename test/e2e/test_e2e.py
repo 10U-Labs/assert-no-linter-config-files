@@ -140,68 +140,36 @@ class TestEndToEnd:
         result = run_cli("--linters", "pylint", str(tmp_path))
         assert result.stdout == ""
 
-    def test_pyproject_toml_with_tool_sections_exits_1(self, tmp_path: Path) -> None:
+    def test_pyproject_toml_with_tool_sections_exits_1(
+        self, tmp_path: Path, pyproject_mypy_pylint_with_project_content: str
+    ) -> None:
         """pyproject.toml with tool sections exits 1."""
-        content = """
-[project]
-name = "myproject"
-
-[tool.mypy]
-strict = true
-
-[tool.pylint]
-max-line-length = 100
-"""
-        (tmp_path / "pyproject.toml").write_text(content)
+        (tmp_path / "pyproject.toml").write_text(pyproject_mypy_pylint_with_project_content)
         result = run_cli("--linters", "mypy,pylint", str(tmp_path))
         assert result.returncode == 1
 
-    def test_pyproject_toml_with_tool_sections_reports_two_lines(self, tmp_path: Path) -> None:
+    def test_pyproject_toml_with_tool_sections_reports_two_lines(
+        self, tmp_path: Path, pyproject_mypy_pylint_with_project_content: str
+    ) -> None:
         """pyproject.toml with two tool sections produces two output lines."""
-        content = """
-[project]
-name = "myproject"
-
-[tool.mypy]
-strict = true
-
-[tool.pylint]
-max-line-length = 100
-"""
-        (tmp_path / "pyproject.toml").write_text(content)
+        (tmp_path / "pyproject.toml").write_text(pyproject_mypy_pylint_with_project_content)
         result = run_cli("--linters", "mypy,pylint", str(tmp_path))
         lines = result.stdout.strip().split("\n")
         assert len(lines) == 2
 
-    def test_pyproject_toml_with_tool_sections_reports_mypy(self, tmp_path: Path) -> None:
+    def test_pyproject_toml_with_tool_sections_reports_mypy(
+        self, tmp_path: Path, pyproject_mypy_pylint_with_project_content: str
+    ) -> None:
         """pyproject.toml with tool.mypy section reports mypy."""
-        content = """
-[project]
-name = "myproject"
-
-[tool.mypy]
-strict = true
-
-[tool.pylint]
-max-line-length = 100
-"""
-        (tmp_path / "pyproject.toml").write_text(content)
+        (tmp_path / "pyproject.toml").write_text(pyproject_mypy_pylint_with_project_content)
         result = run_cli("--linters", "mypy,pylint", str(tmp_path))
         assert "mypy" in result.stdout
 
-    def test_pyproject_toml_with_tool_sections_reports_pylint(self, tmp_path: Path) -> None:
+    def test_pyproject_toml_with_tool_sections_reports_pylint(
+        self, tmp_path: Path, pyproject_mypy_pylint_with_project_content: str
+    ) -> None:
         """pyproject.toml with tool.pylint section reports pylint."""
-        content = """
-[project]
-name = "myproject"
-
-[tool.mypy]
-strict = true
-
-[tool.pylint]
-max-line-length = 100
-"""
-        (tmp_path / "pyproject.toml").write_text(content)
+        (tmp_path / "pyproject.toml").write_text(pyproject_mypy_pylint_with_project_content)
         result = run_cli("--linters", "mypy,pylint", str(tmp_path))
         assert "pylint" in result.stdout
 

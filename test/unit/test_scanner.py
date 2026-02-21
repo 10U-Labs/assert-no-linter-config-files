@@ -248,28 +248,18 @@ class TestPyprojectToml:
         findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert len(findings) == 0
 
-    def test_multiple_sections_returns_two_findings(self, tmp_path: Path) -> None:
+    def test_multiple_sections_returns_two_findings(
+        self, tmp_path: Path, pyproject_mypy_pylint_content: str
+    ) -> None:
         """Multiple tool sections produce two findings."""
-        content = """
-[tool.mypy]
-strict = true
-
-[tool.pylint]
-max-line-length = 100
-"""
-        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", pyproject_mypy_pylint_content)
         assert len(findings) == 2
 
-    def test_multiple_sections_has_correct_tools(self, tmp_path: Path) -> None:
+    def test_multiple_sections_has_correct_tools(
+        self, tmp_path: Path, pyproject_mypy_pylint_content: str
+    ) -> None:
         """Multiple tool sections report the correct tools."""
-        content = """
-[tool.mypy]
-strict = true
-
-[tool.pylint]
-max-line-length = 100
-"""
-        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", pyproject_mypy_pylint_content)
         tools = {f.tool for f in findings}
         assert tools == {"mypy", "pylint"}
 
@@ -902,29 +892,19 @@ class TestScanDirectoryWithFilters:
         )
         assert findings[0].tool == "yamllint"
 
-    def test_filter_embedded_config_by_linter_returns_one_finding(self, tmp_path: Path) -> None:
+    def test_filter_embedded_config_by_linter_returns_one_finding(
+        self, tmp_path: Path, pyproject_mypy_pylint_content: str
+    ) -> None:
         """Filter embedded config in pyproject.toml returns one finding."""
-        content = """
-[tool.mypy]
-strict = true
-
-[tool.pylint]
-max-line-length = 100
-"""
-        (tmp_path / "pyproject.toml").write_text(content)
+        (tmp_path / "pyproject.toml").write_text(pyproject_mypy_pylint_content)
         findings = scan_directory(tmp_path, linters=frozenset({"mypy"}))
         assert len(findings) == 1
 
-    def test_filter_embedded_config_by_linter_has_correct_tool(self, tmp_path: Path) -> None:
+    def test_filter_embedded_config_by_linter_has_correct_tool(
+        self, tmp_path: Path, pyproject_mypy_pylint_content: str
+    ) -> None:
         """Filter embedded config in pyproject.toml reports the correct tool."""
-        content = """
-[tool.mypy]
-strict = true
-
-[tool.pylint]
-max-line-length = 100
-"""
-        (tmp_path / "pyproject.toml").write_text(content)
+        (tmp_path / "pyproject.toml").write_text(pyproject_mypy_pylint_content)
         findings = scan_directory(tmp_path, linters=frozenset({"mypy"}))
         assert findings[0].tool == "mypy"
 

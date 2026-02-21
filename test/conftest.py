@@ -1,11 +1,32 @@
 """Pytest configuration and shared fixtures."""
 
 import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 from assert_no_linter_config_files.cli import main
+
+
+PYPROJECT_MYPY_PYLINT_TOML = """
+[tool.mypy]
+strict = true
+
+[tool.pylint]
+max-line-length = 100
+"""
+
+PYPROJECT_MYPY_PYLINT_WITH_PROJECT_TOML = """
+[project]
+name = "myproject"
+
+[tool.mypy]
+strict = true
+
+[tool.pylint]
+max-line-length = 100
+"""
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -37,3 +58,47 @@ def run_main_with_args():
                 code = int(exc_info.value.code or 0)
                 return code, "\n".join(stdout_lines), "\n".join(stderr_lines)
     return _run
+
+
+@pytest.fixture
+def pyproject_mypy_pylint_content() -> str:
+    """TOML content with [tool.mypy] and [tool.pylint] sections."""
+    return PYPROJECT_MYPY_PYLINT_TOML
+
+
+@pytest.fixture
+def pyproject_mypy_pylint_with_project_content() -> str:
+    """TOML content with [project], [tool.mypy], and [tool.pylint] sections."""
+    return PYPROJECT_MYPY_PYLINT_WITH_PROJECT_TOML
+
+
+@pytest.fixture
+def verbose_pylint_mypy_result(
+    tmp_path: Path, run_main_with_args
+) -> tuple[int, str, str]:
+    """Run main() with --linters pylint,mypy --verbose on an empty tmp_path."""
+    return run_main_with_args([
+        "--linters", "pylint,mypy", "--verbose", str(tmp_path)
+    ])
+
+
+@pytest.fixture
+def verbose_pylint_result(
+    tmp_path: Path, run_main_with_args
+) -> tuple[int, str, str]:
+    """Run main() with --linters pylint --verbose on an empty tmp_path."""
+    return run_main_with_args([
+        "--linters", "pylint", "--verbose", str(tmp_path)
+    ])
+
+
+@pytest.fixture
+def file_instead_of_directory_result(
+    tmp_path: Path, run_main_with_args
+) -> tuple[int, str, str]:
+    """Run main() with a file path instead of a directory."""
+    file_path = tmp_path / "file.txt"
+    file_path.touch()
+    return run_main_with_args([
+        "--linters", "pylint", str(file_path)
+    ])

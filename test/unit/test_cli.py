@@ -441,91 +441,69 @@ def test_invalid_linter_prints_error(tmp_path: Path, run_main_with_args) -> None
 class TestMainVerbose:
     """Tests for verbose output in main()."""
 
-    def test_verbose_exits_0(
-        self, tmp_path: Path, run_main_with_args
-    ) -> None:
-        """--verbose with no findings exits with code 0."""
-        code, _, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
-        assert code == 0
-
     def test_verbose_prints_checking_for(
-        self, tmp_path: Path, run_main_with_args
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
     ) -> None:
         """--verbose prints 'Checking for:' header."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_mypy_result
         assert "Checking for:" in stdout
 
     def test_verbose_prints_pylint(
-        self, tmp_path: Path, run_main_with_args
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
     ) -> None:
         """--verbose prints pylint in linter list."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_mypy_result
         assert "pylint" in stdout
 
     def test_verbose_prints_mypy(
-        self, tmp_path: Path, run_main_with_args
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
     ) -> None:
         """--verbose prints mypy in linter list."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_mypy_result
         assert "mypy" in stdout
 
-    def test_verbose_summary_exits_0(
-        self, tmp_path: Path, run_main_with_args
+    def test_verbose_exits_0(
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
     ) -> None:
         """--verbose with no findings exits with code 0."""
-        code, _, _ = run_main_with_args([
-            "--linters", "pylint", "--verbose", str(tmp_path)
-        ])
+        code, _, _ = verbose_pylint_mypy_result
         assert code == 0
 
     def test_verbose_prints_scanned(
-        self, tmp_path: Path, run_main_with_args
+        self, verbose_pylint_result: tuple[int, str, str]
     ) -> None:
         """--verbose prints 'Scanned' in summary."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_result
         assert "Scanned" in stdout
 
     def test_verbose_prints_findings_count(
-        self, tmp_path: Path, run_main_with_args
+        self, verbose_pylint_result: tuple[int, str, str]
     ) -> None:
         """--verbose prints 'finding(s)' in summary."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_result
         assert "finding(s)" in stdout
+
+    def test_verbose_summary_exits_0(
+        self, verbose_pylint_result: tuple[int, str, str]
+    ) -> None:
+        """--verbose with no findings exits with code 0."""
+        code, _, _ = verbose_pylint_result
+        assert code == 0
 
 
 @pytest.mark.unit
 def test_file_instead_of_directory_exits_2(
-    tmp_path: Path, run_main_with_args
+    file_instead_of_directory_result: tuple[int, str, str],
 ) -> None:
     """Providing a file instead of directory exits with code 2."""
-    file_path = tmp_path / "file.txt"
-    file_path.touch()
-    code, _, _ = run_main_with_args([
-        "--linters", "pylint", str(file_path)
-    ])
+    code, _, _ = file_instead_of_directory_result
     assert code == 2
 
 
 @pytest.mark.unit
 def test_file_instead_of_directory_prints_error(
-    tmp_path: Path, run_main_with_args
+    file_instead_of_directory_result: tuple[int, str, str],
 ) -> None:
     """Providing a file instead of directory prints error to stderr."""
-    file_path = tmp_path / "file.txt"
-    file_path.touch()
-    _, _, stderr = run_main_with_args([
-        "--linters", "pylint", str(file_path)
-    ])
+    _, _, stderr = file_instead_of_directory_result
     assert "is not a directory" in stderr

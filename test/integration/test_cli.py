@@ -203,14 +203,10 @@ class TestMainFunction:
         assert "tool.mypy" in stdout
 
     def test_file_instead_of_directory_exits_2(
-        self, tmp_path: Path, run_main_with_args
+        self, file_instead_of_directory_result: tuple[int, str, str]
     ) -> None:
         """Exit 2 when a file is provided instead of directory."""
-        file_path = tmp_path / "file.txt"
-        file_path.touch()
-        code, _, _ = run_main_with_args([
-            "--linters", "pylint", str(file_path)
-        ])
+        code, _, _ = file_instead_of_directory_result
         assert code == 2
 
 
@@ -534,82 +530,74 @@ class TestBehaviorModifiers:
 class TestVerboseFlag:
     """Tests for the --verbose flag."""
 
-    def test_verbose_exits_0(self, tmp_path: Path, run_main_with_args) -> None:
+    def test_verbose_exits_0(
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
+    ) -> None:
         """--verbose exits 0 when no config found."""
-        code, _, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
+        code, _, _ = verbose_pylint_mypy_result
         assert code == 0
 
-    def test_verbose_shows_checking_for(self, tmp_path: Path, run_main_with_args) -> None:
+    def test_verbose_shows_checking_for(
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
+    ) -> None:
         """--verbose shows 'Checking for:' header."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_mypy_result
         assert "Checking for:" in stdout
 
-    def test_verbose_shows_mypy(self, tmp_path: Path, run_main_with_args) -> None:
+    def test_verbose_shows_mypy(
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
+    ) -> None:
         """--verbose shows mypy in linter list."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_mypy_result
         assert "mypy" in stdout
 
-    def test_verbose_shows_pylint(self, tmp_path: Path, run_main_with_args) -> None:
+    def test_verbose_shows_pylint(
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
+    ) -> None:
         """--verbose shows pylint in linter list."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_mypy_result
         assert "pylint" in stdout
 
     def test_verbose_shows_pylintrc_config_file(
-        self, tmp_path: Path, run_main_with_args
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
     ) -> None:
         """--verbose shows .pylintrc in config files list."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_mypy_result
         assert ".pylintrc" in stdout
 
     def test_verbose_shows_pylint_pyproject_config(
-        self, tmp_path: Path, run_main_with_args
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
     ) -> None:
         """--verbose shows pylint pyproject.toml config pattern."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_mypy_result
         assert "[tool.pylint.*] in pyproject.toml" in stdout
 
     def test_verbose_shows_mypy_ini_config_file(
-        self, tmp_path: Path, run_main_with_args
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
     ) -> None:
         """--verbose shows mypy.ini in config files list."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_mypy_result
         assert "mypy.ini" in stdout
 
     def test_verbose_shows_mypy_pyproject_config(
-        self, tmp_path: Path, run_main_with_args
+        self, verbose_pylint_mypy_result: tuple[int, str, str]
     ) -> None:
         """--verbose shows mypy pyproject.toml config pattern."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_mypy_result
         assert "[tool.mypy] in pyproject.toml" in stdout
 
-    def test_verbose_shows_scanning_exits_0(self, tmp_path: Path, run_main_with_args) -> None:
+    def test_verbose_shows_scanning_exits_0(
+        self, verbose_pylint_result: tuple[int, str, str]
+    ) -> None:
         """--verbose shows directories being scanned and exits 0."""
-        code, _, _ = run_main_with_args([
-            "--linters", "pylint", "--verbose", str(tmp_path)
-        ])
+        code, _, _ = verbose_pylint_result
         assert code == 0
 
-    def test_verbose_shows_scanning_label(self, tmp_path: Path, run_main_with_args) -> None:
+    def test_verbose_shows_scanning_label(
+        self, verbose_pylint_result: tuple[int, str, str]
+    ) -> None:
         """--verbose shows 'Scanning:' label."""
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint", "--verbose", str(tmp_path)
-        ])
+        _, stdout, _ = verbose_pylint_result
         assert "Scanning:" in stdout
 
     def test_verbose_shows_scanning_path(self, tmp_path: Path, run_main_with_args) -> None:
