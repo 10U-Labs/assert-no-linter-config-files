@@ -1,5 +1,6 @@
 """Unit tests for the __main__ module."""
 
+import importlib
 import os
 import subprocess
 import sys
@@ -26,13 +27,13 @@ class TestMainModule:
 
     def test_module_imports_and_calls_main(self):
         """The __main__ module imports and calls main."""
-        import importlib
-
         with patch(
             "assert_no_linter_config_files.cli.main",
             side_effect=SystemExit(0)
         ) as mock_main:
             with pytest.raises(SystemExit):
-                import assert_no_linter_config_files.__main__
-                importlib.reload(assert_no_linter_config_files.__main__)
+                module = importlib.import_module(
+                    "assert_no_linter_config_files.__main__"
+                )
+                importlib.reload(module)
             mock_main.assert_called()
