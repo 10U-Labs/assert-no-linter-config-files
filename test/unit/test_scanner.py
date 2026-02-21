@@ -51,14 +51,72 @@ class TestDedicatedConfigFiles:
             (".jscpdrc.yaml", "jscpd"),
         ],
     )
-    def test_dedicated_config_file_detected(
+    def test_dedicated_config_file_returns_one_finding(
         self, tmp_path: Path, filename: str, expected_tool: str
     ) -> None:
-        """Dedicated config files are detected."""
+        """Dedicated config files produce exactly one finding."""
         (tmp_path / filename).touch()
         findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 1
+
+    @pytest.mark.parametrize(
+        "filename,expected_tool",
+        [
+            (".pylintrc", "pylint"),
+            ("pylintrc", "pylint"),
+            (".pylintrc.toml", "pylint"),
+            ("pytest.ini", "pytest"),
+            ("mypy.ini", "mypy"),
+            (".mypy.ini", "mypy"),
+            (".yamllint", "yamllint"),
+            (".yamllint.yml", "yamllint"),
+            (".yamllint.yaml", "yamllint"),
+            (".jscpd.json", "jscpd"),
+            (".jscpd.yml", "jscpd"),
+            (".jscpd.yaml", "jscpd"),
+            (".jscpd.toml", "jscpd"),
+            (".jscpdrc", "jscpd"),
+            (".jscpdrc.json", "jscpd"),
+            (".jscpdrc.yml", "jscpd"),
+            (".jscpdrc.yaml", "jscpd"),
+        ],
+    )
+    def test_dedicated_config_file_has_correct_tool(
+        self, tmp_path: Path, filename: str, expected_tool: str
+    ) -> None:
+        """Dedicated config files report the correct tool."""
+        (tmp_path / filename).touch()
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert findings[0].tool == expected_tool
+
+    @pytest.mark.parametrize(
+        "filename,expected_tool",
+        [
+            (".pylintrc", "pylint"),
+            ("pylintrc", "pylint"),
+            (".pylintrc.toml", "pylint"),
+            ("pytest.ini", "pytest"),
+            ("mypy.ini", "mypy"),
+            (".mypy.ini", "mypy"),
+            (".yamllint", "yamllint"),
+            (".yamllint.yml", "yamllint"),
+            (".yamllint.yaml", "yamllint"),
+            (".jscpd.json", "jscpd"),
+            (".jscpd.yml", "jscpd"),
+            (".jscpd.yaml", "jscpd"),
+            (".jscpd.toml", "jscpd"),
+            (".jscpdrc", "jscpd"),
+            (".jscpdrc.json", "jscpd"),
+            (".jscpdrc.yml", "jscpd"),
+            (".jscpdrc.yaml", "jscpd"),
+        ],
+    )
+    def test_dedicated_config_file_has_config_file_reason(
+        self, tmp_path: Path, filename: str, expected_tool: str
+    ) -> None:
+        """Dedicated config files report 'config file' as reason."""
+        (tmp_path / filename).touch()
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert findings[0].reason == "config file"
 
     def test_no_findings_for_unrelated_files(self, tmp_path: Path) -> None:
@@ -74,35 +132,70 @@ class TestDedicatedConfigFiles:
 class TestPyprojectToml:
     """Tests for pyproject.toml section detection."""
 
-    def test_tool_pylint_section(self, tmp_path: Path) -> None:
-        """Detect [tool.pylint] section."""
+    def test_tool_pylint_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [tool.pylint] section returns one finding."""
         content = "[tool.pylint]\nmax-line-length = 100\n"
         findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert len(findings) == 1
+
+    def test_tool_pylint_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [tool.pylint] section reports pylint tool."""
+        content = "[tool.pylint]\nmax-line-length = 100\n"
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert findings[0].tool == "pylint"
+
+    def test_tool_pylint_section_has_correct_reason(self, tmp_path: Path) -> None:
+        """Detect [tool.pylint] section reports tool.pylint in reason."""
+        content = "[tool.pylint]\nmax-line-length = 100\n"
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert "tool.pylint" in findings[0].reason
 
-    def test_tool_pylint_subsection(self, tmp_path: Path) -> None:
-        """Detect [tool.pylint.messages_control] subsection."""
+    def test_tool_pylint_subsection_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [tool.pylint.messages_control] subsection returns one finding."""
         content = "[tool.pylint.messages_control]\ndisable = ['C0114']\n"
         findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert len(findings) == 1
+
+    def test_tool_pylint_subsection_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [tool.pylint.messages_control] subsection reports pylint tool."""
+        content = "[tool.pylint.messages_control]\ndisable = ['C0114']\n"
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert findings[0].tool == "pylint"
 
-    def test_tool_mypy_section(self, tmp_path: Path) -> None:
-        """Detect [tool.mypy] section."""
+    def test_tool_mypy_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [tool.mypy] section returns one finding."""
         content = "[tool.mypy]\nstrict = true\n"
         findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert len(findings) == 1
+
+    def test_tool_mypy_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [tool.mypy] section reports mypy tool."""
+        content = "[tool.mypy]\nstrict = true\n"
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert findings[0].tool == "mypy"
+
+    def test_tool_mypy_section_has_correct_reason(self, tmp_path: Path) -> None:
+        """Detect [tool.mypy] section reports tool.mypy in reason."""
+        content = "[tool.mypy]\nstrict = true\n"
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert "tool.mypy" in findings[0].reason
 
-    def test_tool_pytest_ini_options(self, tmp_path: Path) -> None:
-        """Detect [tool.pytest.ini_options] section."""
+    def test_tool_pytest_ini_options_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [tool.pytest.ini_options] section returns one finding."""
         content = "[tool.pytest.ini_options]\naddopts = '-v'\n"
         findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert len(findings) == 1
+
+    def test_tool_pytest_ini_options_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [tool.pytest.ini_options] section reports pytest tool."""
+        content = "[tool.pytest.ini_options]\naddopts = '-v'\n"
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert findings[0].tool == "pytest"
+
+    def test_tool_pytest_ini_options_has_correct_reason(self, tmp_path: Path) -> None:
+        """Detect [tool.pytest.ini_options] section reports correct reason."""
+        content = "[tool.pytest.ini_options]\naddopts = '-v'\n"
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert "tool.pytest.ini_options" in findings[0].reason
 
     def test_tool_pytest_without_ini_options_not_flagged(
@@ -113,20 +206,40 @@ class TestPyprojectToml:
         findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert len(findings) == 0
 
-    def test_tool_jscpd_section(self, tmp_path: Path) -> None:
-        """Detect [tool.jscpd] section."""
+    def test_tool_jscpd_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [tool.jscpd] section returns one finding."""
         content = "[tool.jscpd]\nthreshold = 0\n"
         findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert len(findings) == 1
+
+    def test_tool_jscpd_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [tool.jscpd] section reports jscpd tool."""
+        content = "[tool.jscpd]\nthreshold = 0\n"
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert findings[0].tool == "jscpd"
+
+    def test_tool_jscpd_section_has_correct_reason(self, tmp_path: Path) -> None:
+        """Detect [tool.jscpd] section reports tool.jscpd in reason."""
+        content = "[tool.jscpd]\nthreshold = 0\n"
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert "tool.jscpd" in findings[0].reason
 
-    def test_tool_yamllint_section(self, tmp_path: Path) -> None:
-        """Detect [tool.yamllint] section."""
+    def test_tool_yamllint_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [tool.yamllint] section returns one finding."""
         content = "[tool.yamllint]\nrules = {}\n"
         findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert len(findings) == 1
+
+    def test_tool_yamllint_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [tool.yamllint] section reports yamllint tool."""
+        content = "[tool.yamllint]\nrules = {}\n"
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert findings[0].tool == "yamllint"
+
+    def test_tool_yamllint_section_has_correct_reason(self, tmp_path: Path) -> None:
+        """Detect [tool.yamllint] section reports tool.yamllint in reason."""
+        content = "[tool.yamllint]\nrules = {}\n"
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert "tool.yamllint" in findings[0].reason
 
     def test_no_findings_for_other_tools(self, tmp_path: Path) -> None:
@@ -135,8 +248,8 @@ class TestPyprojectToml:
         findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert len(findings) == 0
 
-    def test_multiple_sections(self, tmp_path: Path) -> None:
-        """Multiple tool sections are all detected."""
+    def test_multiple_sections_returns_two_findings(self, tmp_path: Path) -> None:
+        """Multiple tool sections produce two findings."""
         content = """
 [tool.mypy]
 strict = true
@@ -146,6 +259,17 @@ max-line-length = 100
 """
         findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert len(findings) == 2
+
+    def test_multiple_sections_has_correct_tools(self, tmp_path: Path) -> None:
+        """Multiple tool sections report the correct tools."""
+        content = """
+[tool.mypy]
+strict = true
+
+[tool.pylint]
+max-line-length = 100
+"""
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         tools = {f.tool for f in findings}
         assert tools == {"mypy", "pylint"}
 
@@ -154,34 +278,64 @@ max-line-length = 100
 class TestSetupCfg:
     """Tests for setup.cfg section detection."""
 
-    def test_mypy_section(self, tmp_path: Path) -> None:
-        """Detect [mypy] section."""
+    def test_mypy_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [mypy] section returns one finding."""
         content = "[mypy]\nstrict = True\n"
         findings = check_setup_cfg(tmp_path / "setup.cfg", content)
         assert len(findings) == 1
+
+    def test_mypy_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [mypy] section reports mypy tool."""
+        content = "[mypy]\nstrict = True\n"
+        findings = check_setup_cfg(tmp_path / "setup.cfg", content)
         assert findings[0].tool == "mypy"
+
+    def test_mypy_section_has_correct_reason(self, tmp_path: Path) -> None:
+        """Detect [mypy] section reports mypy section in reason."""
+        content = "[mypy]\nstrict = True\n"
+        findings = check_setup_cfg(tmp_path / "setup.cfg", content)
         assert "mypy section" in findings[0].reason
 
-    def test_tool_pytest_section(self, tmp_path: Path) -> None:
-        """Detect [tool:pytest] section."""
+    def test_tool_pytest_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [tool:pytest] section returns one finding."""
         content = "[tool:pytest]\naddopts = -v\n"
         findings = check_setup_cfg(tmp_path / "setup.cfg", content)
         assert len(findings) == 1
+
+    def test_tool_pytest_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [tool:pytest] section reports pytest tool."""
+        content = "[tool:pytest]\naddopts = -v\n"
+        findings = check_setup_cfg(tmp_path / "setup.cfg", content)
         assert findings[0].tool == "pytest"
+
+    def test_tool_pytest_section_has_correct_reason(self, tmp_path: Path) -> None:
+        """Detect [tool:pytest] section reports tool:pytest in reason."""
+        content = "[tool:pytest]\naddopts = -v\n"
+        findings = check_setup_cfg(tmp_path / "setup.cfg", content)
         assert "tool:pytest" in findings[0].reason
 
-    def test_pylint_section(self, tmp_path: Path) -> None:
-        """Detect section containing 'pylint'."""
+    def test_pylint_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect section containing 'pylint' returns one finding."""
         content = "[pylint.messages_control]\ndisable = C0114\n"
         findings = check_setup_cfg(tmp_path / "setup.cfg", content)
         assert len(findings) == 1
+
+    def test_pylint_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect section containing 'pylint' reports pylint tool."""
+        content = "[pylint.messages_control]\ndisable = C0114\n"
+        findings = check_setup_cfg(tmp_path / "setup.cfg", content)
         assert findings[0].tool == "pylint"
 
-    def test_pylint_master_section(self, tmp_path: Path) -> None:
-        """Detect [pylint.master] section."""
+    def test_pylint_master_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [pylint.master] section returns one finding."""
         content = "[pylint.master]\njobs = 4\n"
         findings = check_setup_cfg(tmp_path / "setup.cfg", content)
         assert len(findings) == 1
+
+    def test_pylint_master_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [pylint.master] section reports pylint tool."""
+        content = "[pylint.master]\njobs = 4\n"
+        findings = check_setup_cfg(tmp_path / "setup.cfg", content)
         assert findings[0].tool == "pylint"
 
     def test_no_findings_for_other_sections(self, tmp_path: Path) -> None:
@@ -195,34 +349,64 @@ class TestSetupCfg:
 class TestToxIni:
     """Tests for tox.ini section detection."""
 
-    def test_pytest_section(self, tmp_path: Path) -> None:
-        """Detect [pytest] section."""
+    def test_pytest_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [pytest] section returns one finding."""
         content = "[pytest]\naddopts = -v\n"
         findings = check_tox_ini(tmp_path / "tox.ini", content)
         assert len(findings) == 1
+
+    def test_pytest_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [pytest] section reports pytest tool."""
+        content = "[pytest]\naddopts = -v\n"
+        findings = check_tox_ini(tmp_path / "tox.ini", content)
         assert findings[0].tool == "pytest"
+
+    def test_pytest_section_has_correct_reason(self, tmp_path: Path) -> None:
+        """Detect [pytest] section reports pytest section in reason."""
+        content = "[pytest]\naddopts = -v\n"
+        findings = check_tox_ini(tmp_path / "tox.ini", content)
         assert "pytest section" in findings[0].reason
 
-    def test_tool_pytest_section(self, tmp_path: Path) -> None:
-        """Detect [tool:pytest] section."""
+    def test_tool_pytest_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [tool:pytest] section returns one finding."""
         content = "[tool:pytest]\naddopts = -v\n"
         findings = check_tox_ini(tmp_path / "tox.ini", content)
         assert len(findings) == 1
+
+    def test_tool_pytest_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [tool:pytest] section reports pytest tool."""
+        content = "[tool:pytest]\naddopts = -v\n"
+        findings = check_tox_ini(tmp_path / "tox.ini", content)
         assert findings[0].tool == "pytest"
 
-    def test_mypy_section(self, tmp_path: Path) -> None:
-        """Detect [mypy] section."""
+    def test_mypy_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect [mypy] section returns one finding."""
         content = "[mypy]\nstrict = True\n"
         findings = check_tox_ini(tmp_path / "tox.ini", content)
         assert len(findings) == 1
+
+    def test_mypy_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect [mypy] section reports mypy tool."""
+        content = "[mypy]\nstrict = True\n"
+        findings = check_tox_ini(tmp_path / "tox.ini", content)
         assert findings[0].tool == "mypy"
+
+    def test_mypy_section_has_correct_reason(self, tmp_path: Path) -> None:
+        """Detect [mypy] section reports mypy section in reason."""
+        content = "[mypy]\nstrict = True\n"
+        findings = check_tox_ini(tmp_path / "tox.ini", content)
         assert "mypy section" in findings[0].reason
 
-    def test_pylint_section(self, tmp_path: Path) -> None:
-        """Detect section containing 'pylint'."""
+    def test_pylint_section_returns_one_finding(self, tmp_path: Path) -> None:
+        """Detect section containing 'pylint' returns one finding."""
         content = "[pylint]\ndisable = C0114\n"
         findings = check_tox_ini(tmp_path / "tox.ini", content)
         assert len(findings) == 1
+
+    def test_pylint_section_has_correct_tool(self, tmp_path: Path) -> None:
+        """Detect section containing 'pylint' reports pylint tool."""
+        content = "[pylint]\ndisable = C0114\n"
+        findings = check_tox_ini(tmp_path / "tox.ini", content)
         assert findings[0].tool == "pylint"
 
     def test_no_findings_for_tox_sections(self, tmp_path: Path) -> None:
@@ -244,37 +428,62 @@ class TestScanDirectory:
         findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 0
 
-    def test_recursive_scan(self, tmp_path: Path) -> None:
-        """Subdirectories are scanned recursively."""
+    def test_recursive_scan_returns_one_finding(self, tmp_path: Path) -> None:
+        """Subdirectories are scanned recursively and produce one finding."""
         subdir = tmp_path / "subdir" / "nested"
         subdir.mkdir(parents=True)
         (subdir / "pytest.ini").touch()
         findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 1
+
+    def test_recursive_scan_has_correct_tool(self, tmp_path: Path) -> None:
+        """Subdirectories are scanned recursively and report the correct tool."""
+        subdir = tmp_path / "subdir" / "nested"
+        subdir.mkdir(parents=True)
+        (subdir / "pytest.ini").touch()
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert findings[0].tool == "pytest"
 
-    def test_pyproject_toml_scanned(self, tmp_path: Path) -> None:
-        """pyproject.toml is scanned for embedded config."""
+    def test_pyproject_toml_scanned_returns_one_finding(self, tmp_path: Path) -> None:
+        """pyproject.toml is scanned and produces one finding."""
         content = "[tool.mypy]\nstrict = true\n"
         (tmp_path / "pyproject.toml").write_text(content)
         findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 1
+
+    def test_pyproject_toml_scanned_has_correct_tool(self, tmp_path: Path) -> None:
+        """pyproject.toml is scanned and reports the correct tool."""
+        content = "[tool.mypy]\nstrict = true\n"
+        (tmp_path / "pyproject.toml").write_text(content)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert findings[0].tool == "mypy"
 
-    def test_setup_cfg_scanned(self, tmp_path: Path) -> None:
-        """setup.cfg is scanned for embedded config."""
+    def test_setup_cfg_scanned_returns_one_finding(self, tmp_path: Path) -> None:
+        """setup.cfg is scanned and produces one finding."""
         content = "[mypy]\nstrict = True\n"
         (tmp_path / "setup.cfg").write_text(content)
         findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 1
+
+    def test_setup_cfg_scanned_has_correct_tool(self, tmp_path: Path) -> None:
+        """setup.cfg is scanned and reports the correct tool."""
+        content = "[mypy]\nstrict = True\n"
+        (tmp_path / "setup.cfg").write_text(content)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert findings[0].tool == "mypy"
 
-    def test_tox_ini_scanned(self, tmp_path: Path) -> None:
-        """tox.ini is scanned for embedded config."""
+    def test_tox_ini_scanned_returns_one_finding(self, tmp_path: Path) -> None:
+        """tox.ini is scanned and produces one finding."""
         content = "[pytest]\naddopts = -v\n"
         (tmp_path / "tox.ini").write_text(content)
         findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert len(findings) == 1
+
+    def test_tox_ini_scanned_has_correct_tool(self, tmp_path: Path) -> None:
+        """tox.ini is scanned and reports the correct tool."""
+        content = "[pytest]\naddopts = -v\n"
+        (tmp_path / "tox.ini").write_text(content)
+        findings = scan_directory(tmp_path, linters=VALID_LINTERS)
         assert findings[0].tool == "pytest"
 
     def test_pyproject_toml_without_tool_sections(self, tmp_path: Path) -> None:
@@ -299,11 +508,19 @@ class TestFinding:
         finding = Finding("./pytest.ini", "pytest", "config file")
         assert str(finding) == "./pytest.ini:pytest:config file"
 
-    def test_namedtuple_fields(self) -> None:
-        """Finding has path, tool, and reason fields."""
+    def test_namedtuple_has_correct_path(self) -> None:
+        """Finding has correct path field."""
         finding = Finding("./mypy.ini", "mypy", "config file")
         assert finding.path == "./mypy.ini"
+
+    def test_namedtuple_has_correct_tool(self) -> None:
+        """Finding has correct tool field."""
+        finding = Finding("./mypy.ini", "mypy", "config file")
         assert finding.tool == "mypy"
+
+    def test_namedtuple_has_correct_reason(self) -> None:
+        """Finding has correct reason field."""
+        finding = Finding("./mypy.ini", "mypy", "config file")
         assert finding.reason == "config file"
 
 
@@ -329,70 +546,115 @@ class TestMakePathRelative:
 class TestDedicatedConfigFilesMapping:
     """Tests for the DEDICATED_CONFIG_FILES mapping."""
 
-    def test_all_pylint_files(self) -> None:
-        """All pylint config files are mapped."""
-        pylint_files = [".pylintrc", "pylintrc", ".pylintrc.toml"]
-        for filename in pylint_files:
-            assert filename in DEDICATED_CONFIG_FILES
-            assert DEDICATED_CONFIG_FILES[filename] == "pylint"
+    @pytest.mark.parametrize(
+        "filename",
+        [".pylintrc", "pylintrc", ".pylintrc.toml"],
+    )
+    def test_pylint_file_maps_to_pylint(self, filename: str) -> None:
+        """Pylint config file maps to pylint."""
+        assert DEDICATED_CONFIG_FILES[filename] == "pylint"
 
-    def test_all_pytest_files(self) -> None:
-        """All pytest config files are mapped."""
-        pytest_files = ["pytest.ini"]
-        for filename in pytest_files:
-            assert filename in DEDICATED_CONFIG_FILES
-            assert DEDICATED_CONFIG_FILES[filename] == "pytest"
+    @pytest.mark.parametrize(
+        "filename",
+        ["pytest.ini"],
+    )
+    def test_pytest_file_maps_to_pytest(self, filename: str) -> None:
+        """Pytest config file maps to pytest."""
+        assert DEDICATED_CONFIG_FILES[filename] == "pytest"
 
-    def test_all_mypy_files(self) -> None:
-        """All mypy config files are mapped."""
-        mypy_files = ["mypy.ini", ".mypy.ini"]
-        for filename in mypy_files:
-            assert filename in DEDICATED_CONFIG_FILES
-            assert DEDICATED_CONFIG_FILES[filename] == "mypy"
+    @pytest.mark.parametrize(
+        "filename",
+        ["mypy.ini", ".mypy.ini"],
+    )
+    def test_mypy_file_maps_to_mypy(self, filename: str) -> None:
+        """Mypy config file maps to mypy."""
+        assert DEDICATED_CONFIG_FILES[filename] == "mypy"
 
-    def test_all_yamllint_files(self) -> None:
-        """All yamllint config files are mapped."""
-        yamllint_files = [".yamllint", ".yamllint.yml", ".yamllint.yaml"]
-        for filename in yamllint_files:
-            assert filename in DEDICATED_CONFIG_FILES
-            assert DEDICATED_CONFIG_FILES[filename] == "yamllint"
+    @pytest.mark.parametrize(
+        "filename",
+        [".yamllint", ".yamllint.yml", ".yamllint.yaml"],
+    )
+    def test_yamllint_file_maps_to_yamllint(self, filename: str) -> None:
+        """Yamllint config file maps to yamllint."""
+        assert DEDICATED_CONFIG_FILES[filename] == "yamllint"
 
-    def test_all_jscpd_files(self) -> None:
-        """All jscpd config files are mapped."""
+    def test_jscpd_has_eight_dedicated_files(self) -> None:
+        """There are exactly eight jscpd dedicated config files."""
         jscpd_count = sum(
             1 for tool in DEDICATED_CONFIG_FILES.values() if tool == "jscpd"
         )
         assert jscpd_count == 8
-        for filename, tool in DEDICATED_CONFIG_FILES.items():
-            if "jscpd" in filename:
-                assert tool == "jscpd"
+
+    @pytest.mark.parametrize(
+        "filename",
+        [
+            f
+            for f in DEDICATED_CONFIG_FILES
+            if "jscpd" in f
+        ],
+    )
+    def test_jscpd_filename_maps_to_jscpd(self, filename: str) -> None:
+        """Jscpd config file maps to jscpd."""
+        assert DEDICATED_CONFIG_FILES[filename] == "jscpd"
 
 
 @pytest.mark.unit
 class TestGetConfigFilesForLinters:
     """Tests for the get_config_files_for_linters function."""
 
-    def test_single_linter_returns_dedicated_files(self) -> None:
-        """Single linter returns its dedicated config files."""
+    def test_single_linter_contains_pylint_key(self) -> None:
+        """Single linter result contains pylint key."""
         result = get_config_files_for_linters(frozenset({"pylint"}))
         assert "pylint" in result
+
+    def test_single_linter_contains_pylintrc(self) -> None:
+        """Single linter result contains .pylintrc."""
+        result = get_config_files_for_linters(frozenset({"pylint"}))
         assert ".pylintrc" in result["pylint"]
+
+    def test_single_linter_contains_pylintrc_no_dot(self) -> None:
+        """Single linter result contains pylintrc."""
+        result = get_config_files_for_linters(frozenset({"pylint"}))
         assert "pylintrc" in result["pylint"]
+
+    def test_single_linter_contains_pylintrc_toml(self) -> None:
+        """Single linter result contains .pylintrc.toml."""
+        result = get_config_files_for_linters(frozenset({"pylint"}))
         assert ".pylintrc.toml" in result["pylint"]
 
-    def test_single_linter_returns_shared_sections(self) -> None:
-        """Single linter returns shared config sections."""
+    def test_single_linter_shared_sections_contains_mypy_key(self) -> None:
+        """Single linter result contains mypy key."""
         result = get_config_files_for_linters(frozenset({"mypy"}))
         assert "mypy" in result
+
+    def test_single_linter_shared_sections_contains_pyproject(self) -> None:
+        """Single linter result contains pyproject.toml shared section."""
+        result = get_config_files_for_linters(frozenset({"mypy"}))
         assert "[tool.mypy] in pyproject.toml" in result["mypy"]
+
+    def test_single_linter_shared_sections_contains_setup_cfg(self) -> None:
+        """Single linter result contains setup.cfg shared section."""
+        result = get_config_files_for_linters(frozenset({"mypy"}))
         assert "[mypy] in setup.cfg" in result["mypy"]
+
+    def test_single_linter_shared_sections_contains_tox_ini(self) -> None:
+        """Single linter result contains tox.ini shared section."""
+        result = get_config_files_for_linters(frozenset({"mypy"}))
         assert "[mypy] in tox.ini" in result["mypy"]
 
-    def test_multiple_linters_returns_all(self) -> None:
-        """Multiple linters returns configs for each."""
+    def test_multiple_linters_returns_correct_count(self) -> None:
+        """Multiple linters returns correct count."""
         result = get_config_files_for_linters(frozenset({"pylint", "mypy"}))
         assert len(result) == 2
+
+    def test_multiple_linters_contains_pylint(self) -> None:
+        """Multiple linters result contains pylint."""
+        result = get_config_files_for_linters(frozenset({"pylint", "mypy"}))
         assert "pylint" in result
+
+    def test_multiple_linters_contains_mypy(self) -> None:
+        """Multiple linters result contains mypy."""
+        result = get_config_files_for_linters(frozenset({"pylint", "mypy"}))
         assert "mypy" in result
 
     def test_results_sorted_by_linter(self) -> None:
@@ -407,46 +669,77 @@ class TestGetConfigFilesForLinters:
         dedicated = [f for f in result["pylint"] if "in" not in f]
         assert dedicated == sorted(dedicated)
 
-    def test_linter_without_shared_sections(self) -> None:
-        """Linter with only dedicated files works correctly."""
-        # yamllint only has pyproject.toml shared section
+    def test_linter_without_shared_sections_has_dedicated_file(self) -> None:
+        """Linter with only dedicated files includes the dedicated file."""
         result = get_config_files_for_linters(frozenset({"yamllint"}))
         assert ".yamllint" in result["yamllint"]
+
+    def test_linter_without_shared_sections_has_pyproject_section(self) -> None:
+        """Linter with pyproject.toml shared section includes it."""
+        result = get_config_files_for_linters(frozenset({"yamllint"}))
         assert "[tool.yamllint.*] in pyproject.toml" in result["yamllint"]
 
-    def test_all_valid_linters(self) -> None:
-        """All valid linters return non-empty config lists."""
+    def test_all_valid_linters_returns_correct_count(self) -> None:
+        """All valid linters return correct number of results."""
         result = get_config_files_for_linters(VALID_LINTERS)
         assert len(result) == len(VALID_LINTERS)
-        for linter, configs in result.items():
-            assert len(configs) > 0, f"{linter} has no configs"
+
+    @pytest.mark.parametrize(
+        "linter",
+        sorted(VALID_LINTERS),
+    )
+    def test_each_valid_linter_has_configs(self, linter: str) -> None:
+        """Each valid linter returns non-empty config list."""
+        result = get_config_files_for_linters(VALID_LINTERS)
+        assert len(result[linter]) > 0
 
 
 @pytest.mark.unit
 class TestSharedConfigSectionsMapping:
     """Tests for the SHARED_CONFIG_SECTIONS mapping."""
 
-    def test_all_linters_have_pyproject_section(self) -> None:
-        """All linters in SHARED_CONFIG_SECTIONS have pyproject.toml."""
-        for linter, sections in SHARED_CONFIG_SECTIONS.items():
-            assert "pyproject.toml" in sections, f"{linter} missing pyproject.toml"
+    @pytest.mark.parametrize(
+        "linter",
+        list(SHARED_CONFIG_SECTIONS.keys()),
+    )
+    def test_linter_has_pyproject_section(self, linter: str) -> None:
+        """Linter in SHARED_CONFIG_SECTIONS has pyproject.toml."""
+        assert "pyproject.toml" in SHARED_CONFIG_SECTIONS[linter]
 
-    def test_pylint_has_all_shared_files(self) -> None:
-        """Pylint has sections in all shared config files."""
+    def test_pylint_has_pyproject(self) -> None:
+        """Pylint has pyproject.toml shared section."""
         assert "pyproject.toml" in SHARED_CONFIG_SECTIONS["pylint"]
+
+    def test_pylint_has_setup_cfg(self) -> None:
+        """Pylint has setup.cfg shared section."""
         assert "setup.cfg" in SHARED_CONFIG_SECTIONS["pylint"]
+
+    def test_pylint_has_tox_ini(self) -> None:
+        """Pylint has tox.ini shared section."""
         assert "tox.ini" in SHARED_CONFIG_SECTIONS["pylint"]
 
-    def test_mypy_has_all_shared_files(self) -> None:
-        """Mypy has sections in all shared config files."""
+    def test_mypy_has_pyproject(self) -> None:
+        """Mypy has pyproject.toml shared section."""
         assert "pyproject.toml" in SHARED_CONFIG_SECTIONS["mypy"]
+
+    def test_mypy_has_setup_cfg(self) -> None:
+        """Mypy has setup.cfg shared section."""
         assert "setup.cfg" in SHARED_CONFIG_SECTIONS["mypy"]
+
+    def test_mypy_has_tox_ini(self) -> None:
+        """Mypy has tox.ini shared section."""
         assert "tox.ini" in SHARED_CONFIG_SECTIONS["mypy"]
 
-    def test_pytest_has_all_shared_files(self) -> None:
-        """Pytest has sections in all shared config files."""
+    def test_pytest_has_pyproject(self) -> None:
+        """Pytest has pyproject.toml shared section."""
         assert "pyproject.toml" in SHARED_CONFIG_SECTIONS["pytest"]
+
+    def test_pytest_has_setup_cfg(self) -> None:
+        """Pytest has setup.cfg shared section."""
         assert "setup.cfg" in SHARED_CONFIG_SECTIONS["pytest"]
+
+    def test_pytest_has_tox_ini(self) -> None:
+        """Pytest has tox.ini shared section."""
         assert "tox.ini" in SHARED_CONFIG_SECTIONS["pytest"]
 
 
@@ -505,12 +798,22 @@ class TestFindingToDict:
             "reason": "config file",
         }
 
-    def test_to_dict_with_section(self) -> None:
-        """to_dict works with section reason."""
+    def test_to_dict_with_section_has_correct_path(self) -> None:
+        """to_dict with section reason has correct path."""
         finding = Finding("./pyproject.toml", "mypy", "tool.mypy section")
         result = finding.to_dict()
         assert result["path"] == "./pyproject.toml"
+
+    def test_to_dict_with_section_has_correct_tool(self) -> None:
+        """to_dict with section reason has correct tool."""
+        finding = Finding("./pyproject.toml", "mypy", "tool.mypy section")
+        result = finding.to_dict()
         assert result["tool"] == "mypy"
+
+    def test_to_dict_with_section_has_correct_reason(self) -> None:
+        """to_dict with section reason has correct reason."""
+        finding = Finding("./pyproject.toml", "mypy", "tool.mypy section")
+        result = finding.to_dict()
         assert result["reason"] == "tool.mypy section"
 
 
@@ -518,26 +821,39 @@ class TestFindingToDict:
 class TestScanDirectoryWithFilters:
     """Tests for scan_directory with linters and exclude filters."""
 
-    def test_filter_by_single_linter(self, tmp_path: Path) -> None:
-        """Filter by a single linter."""
+    def test_filter_by_single_linter_returns_one_finding(self, tmp_path: Path) -> None:
+        """Filter by a single linter returns one finding."""
         (tmp_path / ".pylintrc").touch()
         (tmp_path / "mypy.ini").touch()
         findings = scan_directory(tmp_path, linters=frozenset({"pylint"}))
         assert len(findings) == 1
+
+    def test_filter_by_single_linter_has_correct_tool(self, tmp_path: Path) -> None:
+        """Filter by a single linter reports the correct tool."""
+        (tmp_path / ".pylintrc").touch()
+        (tmp_path / "mypy.ini").touch()
+        findings = scan_directory(tmp_path, linters=frozenset({"pylint"}))
         assert findings[0].tool == "pylint"
 
-    def test_filter_by_multiple_linters(self, tmp_path: Path) -> None:
-        """Filter by multiple linters."""
+    def test_filter_by_multiple_linters_returns_correct_count(self, tmp_path: Path) -> None:
+        """Filter by multiple linters returns correct count."""
         (tmp_path / ".pylintrc").touch()
         (tmp_path / "mypy.ini").touch()
         (tmp_path / "pytest.ini").touch()
         findings = scan_directory(tmp_path, linters=frozenset({"pylint", "mypy"}))
         assert len(findings) == 2
+
+    def test_filter_by_multiple_linters_has_correct_tools(self, tmp_path: Path) -> None:
+        """Filter by multiple linters reports the correct tools."""
+        (tmp_path / ".pylintrc").touch()
+        (tmp_path / "mypy.ini").touch()
+        (tmp_path / "pytest.ini").touch()
+        findings = scan_directory(tmp_path, linters=frozenset({"pylint", "mypy"}))
         linters_found = {f.tool for f in findings}
         assert linters_found == {"pylint", "mypy"}
 
-    def test_exclude_pattern(self, tmp_path: Path) -> None:
-        """Exclude paths matching pattern."""
+    def test_exclude_pattern_returns_one_finding(self, tmp_path: Path) -> None:
+        """Exclude paths matching pattern returns one finding."""
         subdir = tmp_path / "vendor"
         subdir.mkdir()
         (subdir / ".pylintrc").touch()
@@ -546,10 +862,20 @@ class TestScanDirectoryWithFilters:
             tmp_path, linters=VALID_LINTERS, exclude_patterns=["*vendor*"]
         )
         assert len(findings) == 1
+
+    def test_exclude_pattern_has_correct_tool(self, tmp_path: Path) -> None:
+        """Exclude paths matching pattern reports the correct tool."""
+        subdir = tmp_path / "vendor"
+        subdir.mkdir()
+        (subdir / ".pylintrc").touch()
+        (tmp_path / "mypy.ini").touch()
+        findings = scan_directory(
+            tmp_path, linters=VALID_LINTERS, exclude_patterns=["*vendor*"]
+        )
         assert findings[0].tool == "mypy"
 
-    def test_exclude_multiple_patterns(self, tmp_path: Path) -> None:
-        """Multiple exclude patterns work together."""
+    def test_exclude_multiple_patterns_returns_one_finding(self, tmp_path: Path) -> None:
+        """Multiple exclude patterns return one finding."""
         lib_dir = tmp_path / "lib"
         ext_dir = tmp_path / "external"
         lib_dir.mkdir()
@@ -561,10 +887,23 @@ class TestScanDirectoryWithFilters:
             tmp_path, linters=VALID_LINTERS, exclude_patterns=["*lib*", "*external*"]
         )
         assert len(findings) == 1
+
+    def test_exclude_multiple_patterns_has_correct_tool(self, tmp_path: Path) -> None:
+        """Multiple exclude patterns report the correct tool."""
+        lib_dir = tmp_path / "lib"
+        ext_dir = tmp_path / "external"
+        lib_dir.mkdir()
+        ext_dir.mkdir()
+        (lib_dir / ".pylintrc").touch()
+        (ext_dir / "mypy.ini").touch()
+        (tmp_path / ".yamllint").touch()
+        findings = scan_directory(
+            tmp_path, linters=VALID_LINTERS, exclude_patterns=["*lib*", "*external*"]
+        )
         assert findings[0].tool == "yamllint"
 
-    def test_filter_embedded_config_by_linter(self, tmp_path: Path) -> None:
-        """Filter embedded config in pyproject.toml by linter."""
+    def test_filter_embedded_config_by_linter_returns_one_finding(self, tmp_path: Path) -> None:
+        """Filter embedded config in pyproject.toml returns one finding."""
         content = """
 [tool.mypy]
 strict = true
@@ -575,6 +914,18 @@ max-line-length = 100
         (tmp_path / "pyproject.toml").write_text(content)
         findings = scan_directory(tmp_path, linters=frozenset({"mypy"}))
         assert len(findings) == 1
+
+    def test_filter_embedded_config_by_linter_has_correct_tool(self, tmp_path: Path) -> None:
+        """Filter embedded config in pyproject.toml reports the correct tool."""
+        content = """
+[tool.mypy]
+strict = true
+
+[tool.pylint]
+max-line-length = 100
+"""
+        (tmp_path / "pyproject.toml").write_text(content)
+        findings = scan_directory(tmp_path, linters=frozenset({"mypy"}))
         assert findings[0].tool == "mypy"
 
 
@@ -582,39 +933,64 @@ max-line-length = 100
 class TestPyprojectRegexFallback:
     """Tests for the regex fallback when tomllib is unavailable or fails."""
 
-    def test_regex_fallback_detects_pylint(self, tmp_path: Path) -> None:
-        """Regex fallback detects [tool.pylint] section."""
+    def test_regex_fallback_detects_pylint_returns_one_finding(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.pylint] section returns one finding."""
         content = "[tool.pylint]\nmax-line-length = 100\n"
         findings = _check_pyproject_with_regex(str(tmp_path), content)
         assert len(findings) == 1
+
+    def test_regex_fallback_detects_pylint_has_correct_tool(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.pylint] section reports pylint tool."""
+        content = "[tool.pylint]\nmax-line-length = 100\n"
+        findings = _check_pyproject_with_regex(str(tmp_path), content)
         assert findings[0].tool == "pylint"
 
-    def test_regex_fallback_detects_mypy(self, tmp_path: Path) -> None:
-        """Regex fallback detects [tool.mypy] section."""
+    def test_regex_fallback_detects_mypy_returns_one_finding(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.mypy] section returns one finding."""
         content = "[tool.mypy]\nstrict = true\n"
         findings = _check_pyproject_with_regex(str(tmp_path), content)
         assert len(findings) == 1
+
+    def test_regex_fallback_detects_mypy_has_correct_tool(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.mypy] section reports mypy tool."""
+        content = "[tool.mypy]\nstrict = true\n"
+        findings = _check_pyproject_with_regex(str(tmp_path), content)
         assert findings[0].tool == "mypy"
 
-    def test_regex_fallback_detects_pytest(self, tmp_path: Path) -> None:
-        """Regex fallback detects [tool.pytest.ini_options] section."""
+    def test_regex_fallback_detects_pytest_returns_one_finding(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.pytest.ini_options] section returns one finding."""
         content = "[tool.pytest.ini_options]\naddopts = '-v'\n"
         findings = _check_pyproject_with_regex(str(tmp_path), content)
         assert len(findings) == 1
+
+    def test_regex_fallback_detects_pytest_has_correct_tool(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.pytest.ini_options] section reports pytest tool."""
+        content = "[tool.pytest.ini_options]\naddopts = '-v'\n"
+        findings = _check_pyproject_with_regex(str(tmp_path), content)
         assert findings[0].tool == "pytest"
 
-    def test_regex_fallback_detects_jscpd(self, tmp_path: Path) -> None:
-        """Regex fallback detects [tool.jscpd] section."""
+    def test_regex_fallback_detects_jscpd_returns_one_finding(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.jscpd] section returns one finding."""
         content = "[tool.jscpd]\nthreshold = 0\n"
         findings = _check_pyproject_with_regex(str(tmp_path), content)
         assert len(findings) == 1
+
+    def test_regex_fallback_detects_jscpd_has_correct_tool(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.jscpd] section reports jscpd tool."""
+        content = "[tool.jscpd]\nthreshold = 0\n"
+        findings = _check_pyproject_with_regex(str(tmp_path), content)
         assert findings[0].tool == "jscpd"
 
-    def test_regex_fallback_detects_yamllint(self, tmp_path: Path) -> None:
-        """Regex fallback detects [tool.yamllint] section."""
+    def test_regex_fallback_detects_yamllint_returns_one_finding(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.yamllint] section returns one finding."""
         content = "[tool.yamllint]\nrules = {}\n"
         findings = _check_pyproject_with_regex(str(tmp_path), content)
         assert len(findings) == 1
+
+    def test_regex_fallback_detects_yamllint_has_correct_tool(self, tmp_path: Path) -> None:
+        """Regex fallback detects [tool.yamllint] section reports yamllint tool."""
+        content = "[tool.yamllint]\nrules = {}\n"
+        findings = _check_pyproject_with_regex(str(tmp_path), content)
         assert findings[0].tool == "yamllint"
 
     def test_regex_fallback_no_findings(self, tmp_path: Path) -> None:
@@ -623,18 +999,24 @@ class TestPyprojectRegexFallback:
         findings = _check_pyproject_with_regex(str(tmp_path), content)
         assert len(findings) == 0
 
-    def test_tomllib_parse_error_falls_back_to_regex(
+    def test_tomllib_parse_error_falls_back_to_regex_returns_one_finding(
         self, tmp_path: Path
     ) -> None:
-        """When tomllib fails to parse, regex fallback is used."""
-        # Invalid TOML but regex can still match
+        """When tomllib fails to parse, regex fallback returns one finding."""
         content = "[tool.mypy]\nstrict = {\n"  # Invalid TOML
         findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert len(findings) == 1
+
+    def test_tomllib_parse_error_falls_back_to_regex_has_correct_tool(
+        self, tmp_path: Path
+    ) -> None:
+        """When tomllib fails to parse, regex fallback reports mypy tool."""
+        content = "[tool.mypy]\nstrict = {\n"  # Invalid TOML
+        findings = check_pyproject_toml(tmp_path / "pyproject.toml", content)
         assert findings[0].tool == "mypy"
 
-    def test_check_pyproject_without_tomllib(self, tmp_path: Path) -> None:
-        """check_pyproject_toml uses regex when HAS_TOMLLIB is False."""
+    def test_check_pyproject_without_tomllib_returns_one_finding(self, tmp_path: Path) -> None:
+        """check_pyproject_toml with HAS_TOMLLIB=False returns one finding."""
         content = "[tool.pylint]\nmax-line-length = 100\n"
         with patch(
             "assert_no_linter_config_files.scanner.HAS_TOMLLIB", False
@@ -643,6 +1025,16 @@ class TestPyprojectRegexFallback:
                 tmp_path / "pyproject.toml", content
             )
         assert len(findings) == 1
+
+    def test_check_pyproject_without_tomllib_has_correct_tool(self, tmp_path: Path) -> None:
+        """check_pyproject_toml with HAS_TOMLLIB=False reports pylint tool."""
+        content = "[tool.pylint]\nmax-line-length = 100\n"
+        with patch(
+            "assert_no_linter_config_files.scanner.HAS_TOMLLIB", False
+        ):
+            findings = check_pyproject_toml(
+                tmp_path / "pyproject.toml", content
+            )
         assert findings[0].tool == "pylint"
 
 
@@ -702,7 +1094,8 @@ def test_has_tomllib_false_when_import_fails() -> None:
         with patch.object(builtins, "__import__", side_effect=mock_import):
             # Re-import scanner with mocked import
             # The module import itself exercises the fallback path
-            importlib.import_module(scanner_module)
+            mod = importlib.import_module(scanner_module)
+        assert mod.HAS_TOMLLIB is False
     finally:
         # Restore modules
         if saved_tomllib is not None:

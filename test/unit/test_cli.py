@@ -44,12 +44,39 @@ class TestDetermineExitCode:
 
 
 @pytest.mark.unit
-def test_print_verbose_summary(capsys: pytest.CaptureFixture[str]) -> None:
-    """Prints directory and finding counts."""
+def test_print_verbose_summary_shows_directory_count(capsys: pytest.CaptureFixture[str]) -> None:
+    """Prints directory count in summary."""
     _print_verbose_summary(3, 5)
     captured = capsys.readouterr()
     assert "Scanned 3 directory(ies)" in captured.out
+
+
+@pytest.mark.unit
+def test_print_verbose_summary_shows_finding_count(capsys: pytest.CaptureFixture[str]) -> None:
+    """Prints finding count in summary."""
+    _print_verbose_summary(3, 5)
+    captured = capsys.readouterr()
     assert "found 5 finding(s)" in captured.out
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("verbose,quiet,expected_calls", [
+    (True, False, 2),   # verbose: prints finding + summary
+    (False, True, 0),   # quiet: no output
+    (False, False, 1),  # normal: prints finding
+])
+def test_handle_fail_fast_exits_with_findings_code(
+    verbose: bool, quiet: bool, expected_calls: int
+) -> None:
+    """Test fail-fast exits with EXIT_FINDINGS code."""
+    args = argparse.Namespace(
+        verbose=verbose, quiet=quiet, json=False, count=False
+    )
+    finding = Finding("test.py", "pylint", "config file")
+    with patch("builtins.print"):
+        with pytest.raises(SystemExit) as exc_info:
+            _handle_fail_fast(finding, 1, args)
+        assert exc_info.value.code == EXIT_FINDINGS
 
 
 @pytest.mark.unit
@@ -67,9 +94,8 @@ def test_handle_fail_fast_output_modes(
     )
     finding = Finding("test.py", "pylint", "config file")
     with patch("builtins.print") as mock_print:
-        with pytest.raises(SystemExit) as exc_info:
+        with pytest.raises(SystemExit):
             _handle_fail_fast(finding, 1, args)
-        assert exc_info.value.code == EXIT_FINDINGS
         if expected_calls == 0:
             mock_print.assert_not_called()
         else:
@@ -80,6 +106,30 @@ def test_handle_fail_fast_output_modes(
 class TestProcessDirectory:
     """Tests for _process_directory helper."""
 
+    def test_verbose_returns_dirs_scanned_1(self, tmp_path: Path) -> None:
+        """In verbose mode, returns dirs_scanned == 1."""
+        args = argparse.Namespace(
+            verbose=True, exclude=[], fail_fast=False
+        )
+        all_findings: list[Finding] = []
+        with patch("builtins.print"):
+            dirs_scanned, _ = _process_directory(
+                tmp_path, args, frozenset(["pylint"]), 0, all_findings
+            )
+            assert dirs_scanned == 1
+
+    def test_verbose_returns_no_error(self, tmp_path: Path) -> None:
+        """In verbose mode, returns had_error == False."""
+        args = argparse.Namespace(
+            verbose=True, exclude=[], fail_fast=False
+        )
+        all_findings: list[Finding] = []
+        with patch("builtins.print"):
+            _, had_error = _process_directory(
+                tmp_path, args, frozenset(["pylint"]), 0, all_findings
+            )
+            assert had_error is False
+
     def test_verbose_prints_scanning(self, tmp_path: Path) -> None:
         """In verbose mode, prints scanning message."""
         args = argparse.Namespace(
@@ -87,14 +137,27 @@ class TestProcessDirectory:
         )
         all_findings: list[Finding] = []
         with patch("builtins.print") as mock_print:
-            dirs_scanned, had_error = _process_directory(
+            _process_directory(
                 tmp_path, args, frozenset(["pylint"]), 0, all_findings
             )
-            assert dirs_scanned == 1
-            assert had_error is False
             assert any("Scanning:" in str(call) for call in mock_print.call_args_list)
 
-    def test_oserror_returns_error(self, tmp_path: Path) -> None:
+    def test_oserror_returns_zero_dirs_scanned(self, tmp_path: Path) -> None:
+        """OSError during scan returns dirs_scanned == 0."""
+        args = argparse.Namespace(
+            verbose=False, exclude=[], fail_fast=False
+        )
+        all_findings: list[Finding] = []
+        with patch(
+            "assert_no_linter_config_files.cli.scan_directory",
+            side_effect=OSError("Permission denied"),
+        ):
+            dirs_scanned, _ = _process_directory(
+                tmp_path, args, frozenset(["pylint"]), 0, all_findings
+            )
+            assert dirs_scanned == 0
+
+    def test_oserror_returns_had_error_true(self, tmp_path: Path) -> None:
         """OSError during scan returns had_error=True."""
         args = argparse.Namespace(
             verbose=False, exclude=[], fail_fast=False
@@ -104,11 +167,34 @@ class TestProcessDirectory:
             "assert_no_linter_config_files.cli.scan_directory",
             side_effect=OSError("Permission denied"),
         ):
-            dirs_scanned, had_error = _process_directory(
+            _, had_error = _process_directory(
                 tmp_path, args, frozenset(["pylint"]), 0, all_findings
             )
-            assert dirs_scanned == 0
             assert had_error is True
+
+    def test_findings_increments_dirs_scanned(self, tmp_path: Path) -> None:
+        """Successful scan increments dirs_scanned."""
+        (tmp_path / ".pylintrc").touch()
+        args = argparse.Namespace(
+            verbose=False, exclude=[], fail_fast=False
+        )
+        all_findings: list[Finding] = []
+        dirs_scanned, _ = _process_directory(
+            tmp_path, args, frozenset(["pylint"]), 0, all_findings
+        )
+        assert dirs_scanned == 1
+
+    def test_findings_returns_no_error(self, tmp_path: Path) -> None:
+        """Successful scan returns had_error == False."""
+        (tmp_path / ".pylintrc").touch()
+        args = argparse.Namespace(
+            verbose=False, exclude=[], fail_fast=False
+        )
+        all_findings: list[Finding] = []
+        _, had_error = _process_directory(
+            tmp_path, args, frozenset(["pylint"]), 0, all_findings
+        )
+        assert had_error is False
 
     def test_findings_added_to_list(self, tmp_path: Path) -> None:
         """Findings are added to all_findings list."""
@@ -117,11 +203,9 @@ class TestProcessDirectory:
             verbose=False, exclude=[], fail_fast=False
         )
         all_findings: list[Finding] = []
-        dirs_scanned, had_error = _process_directory(
+        _process_directory(
             tmp_path, args, frozenset(["pylint"]), 0, all_findings
         )
-        assert dirs_scanned == 1
-        assert had_error is False
         assert len(all_findings) == 1
 
     def test_verbose_prints_findings(self, tmp_path: Path) -> None:
@@ -151,14 +235,64 @@ class TestOSErrorHandling:
             "assert_no_linter_config_files.cli.scan_directory",
             side_effect=OSError("Permission denied"),
         ):
-            code, _, stderr = run_main_with_args([
+            code, _, _ = run_main_with_args([
                 "--linters", "pylint", str(tmp_path)
             ])
             assert code == 2
+
+    def test_oserror_stderr_contains_error_reading(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """OSError stderr contains 'Error reading'."""
+        with patch(
+            "assert_no_linter_config_files.cli.scan_directory",
+            side_effect=OSError("Permission denied"),
+        ):
+            _, _, stderr = run_main_with_args([
+                "--linters", "pylint", str(tmp_path)
+            ])
             assert "Error reading" in stderr
+
+    def test_oserror_stderr_contains_error_message(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """OSError stderr contains the original error message."""
+        with patch(
+            "assert_no_linter_config_files.cli.scan_directory",
+            side_effect=OSError("Permission denied"),
+        ):
+            _, _, stderr = run_main_with_args([
+                "--linters", "pylint", str(tmp_path)
+            ])
             assert "Permission denied" in stderr
 
-    def test_oserror_reports_to_stderr(
+    def test_oserror_exits_with_code_2(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """OSError exits with code 2."""
+        with patch(
+            "assert_no_linter_config_files.cli.scan_directory",
+            side_effect=OSError("Cannot read file"),
+        ):
+            code, _, _ = run_main_with_args([
+                "--linters", "pylint", str(tmp_path)
+            ])
+            assert code == 2
+
+    def test_oserror_produces_no_stdout(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """OSError produces no stdout output."""
+        with patch(
+            "assert_no_linter_config_files.cli.scan_directory",
+            side_effect=OSError("Cannot read file"),
+        ):
+            _, stdout, _ = run_main_with_args([
+                "--linters", "pylint", str(tmp_path)
+            ])
+            assert stdout == ""
+
+    def test_oserror_reports_message_to_stderr(
         self, tmp_path: Path, run_main_with_args
     ) -> None:
         """OSError message is printed to stderr."""
@@ -166,28 +300,41 @@ class TestOSErrorHandling:
             "assert_no_linter_config_files.cli.scan_directory",
             side_effect=OSError("Cannot read file"),
         ):
-            code, stdout, stderr = run_main_with_args([
+            _, _, stderr = run_main_with_args([
                 "--linters", "pylint", str(tmp_path)
             ])
-            assert code == 2
-            assert stdout == ""
             assert "Cannot read file" in stderr
 
 
 @pytest.mark.unit
-def test_quiet_and_fail_fast_no_output(
+def test_quiet_and_fail_fast_exits_1(
     tmp_path: Path, run_main_with_args
 ) -> None:
-    """--quiet with --fail-fast produces no output."""
+    """--quiet with --fail-fast exits with code 1."""
     (tmp_path / ".pylintrc").touch()
     (tmp_path / "mypy.ini").touch()
-    code, stdout, _ = run_main_with_args([
+    code, _, _ = run_main_with_args([
         "--linters", "pylint,mypy",
         "--quiet",
         "--fail-fast",
         str(tmp_path)
     ])
     assert code == 1
+
+
+@pytest.mark.unit
+def test_quiet_and_fail_fast_no_output(
+    tmp_path: Path, run_main_with_args
+) -> None:
+    """--quiet with --fail-fast produces no stdout output."""
+    (tmp_path / ".pylintrc").touch()
+    (tmp_path / "mypy.ini").touch()
+    _, stdout, _ = run_main_with_args([
+        "--linters", "pylint,mypy",
+        "--quiet",
+        "--fail-fast",
+        str(tmp_path)
+    ])
     assert stdout == ""
 
 
@@ -195,8 +342,8 @@ def test_quiet_and_fail_fast_no_output(
 class TestOutputFindings:
     """Tests for output_findings helper."""
 
-    def test_json_output(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """--json outputs findings as JSON array."""
+    def test_json_output_has_two_items(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """--json outputs findings as JSON array with correct length."""
         findings = [
             Finding("./test.py", "pylint", "config file"),
             Finding("./mypy.ini", "mypy", "config file"),
@@ -205,7 +352,27 @@ class TestOutputFindings:
         captured = capsys.readouterr()
         parsed = json.loads(captured.out)
         assert len(parsed) == 2
+
+    def test_json_output_first_tool_is_pylint(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """--json first finding has tool == pylint."""
+        findings = [
+            Finding("./test.py", "pylint", "config file"),
+            Finding("./mypy.ini", "mypy", "config file"),
+        ]
+        output_findings(findings, use_json=True, use_count=False)
+        captured = capsys.readouterr()
+        parsed = json.loads(captured.out)
         assert parsed[0]["tool"] == "pylint"
+
+    def test_json_output_second_tool_is_mypy(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """--json second finding has tool == mypy."""
+        findings = [
+            Finding("./test.py", "pylint", "config file"),
+            Finding("./mypy.ini", "mypy", "config file"),
+        ]
+        output_findings(findings, use_json=True, use_count=False)
+        captured = capsys.readouterr()
+        parsed = json.loads(captured.out)
         assert parsed[1]["tool"] == "mypy"
 
     def test_count_output(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -218,22 +385,36 @@ class TestOutputFindings:
         captured = capsys.readouterr()
         assert captured.out.strip() == "2"
 
-    def test_default_output(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """Default output prints each finding."""
+    def test_default_output_includes_tool_name(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Default output includes the tool name."""
         findings = [Finding("./test.py", "pylint", "config file")]
         output_findings(findings, use_json=False, use_count=False)
         captured = capsys.readouterr()
         assert "pylint" in captured.out
+
+    def test_default_output_includes_description(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Default output includes the finding description."""
+        findings = [Finding("./test.py", "pylint", "config file")]
+        output_findings(findings, use_json=False, use_count=False)
+        captured = capsys.readouterr()
         assert "config file" in captured.out
 
 
 @pytest.mark.unit
 def test_invalid_linter_exits_2(tmp_path: Path, run_main_with_args) -> None:
     """Invalid linter name exits with code 2."""
-    code, _, stderr = run_main_with_args([
+    code, _, _ = run_main_with_args([
         "--linters", "invalid_linter", str(tmp_path)
     ])
     assert code == 2
+
+
+@pytest.mark.unit
+def test_invalid_linter_prints_error(tmp_path: Path, run_main_with_args) -> None:
+    """Invalid linter name prints error to stderr."""
+    _, _, stderr = run_main_with_args([
+        "--linters", "invalid_linter", str(tmp_path)
+    ])
     assert "Invalid linter" in stderr
 
 
@@ -241,27 +422,67 @@ def test_invalid_linter_exits_2(tmp_path: Path, run_main_with_args) -> None:
 class TestMainVerbose:
     """Tests for verbose output in main()."""
 
-    def test_verbose_prints_linters(
+    def test_verbose_exits_0(
         self, tmp_path: Path, run_main_with_args
     ) -> None:
-        """--verbose prints which linters are being checked."""
-        code, stdout, _ = run_main_with_args([
+        """--verbose with no findings exits with code 0."""
+        code, _, _ = run_main_with_args([
             "--linters", "pylint,mypy", "--verbose", str(tmp_path)
         ])
         assert code == 0
-        assert "Checking for:" in stdout
-        assert "pylint" in stdout
-        assert "mypy" in stdout
 
-    def test_verbose_prints_summary(
+    def test_verbose_prints_checking_for(
         self, tmp_path: Path, run_main_with_args
     ) -> None:
-        """--verbose prints summary at end."""
-        code, stdout, _ = run_main_with_args([
+        """--verbose prints 'Checking for:' header."""
+        _, stdout, _ = run_main_with_args([
+            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
+        ])
+        assert "Checking for:" in stdout
+
+    def test_verbose_prints_pylint(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """--verbose prints pylint in linter list."""
+        _, stdout, _ = run_main_with_args([
+            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
+        ])
+        assert "pylint" in stdout
+
+    def test_verbose_prints_mypy(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """--verbose prints mypy in linter list."""
+        _, stdout, _ = run_main_with_args([
+            "--linters", "pylint,mypy", "--verbose", str(tmp_path)
+        ])
+        assert "mypy" in stdout
+
+    def test_verbose_summary_exits_0(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """--verbose with no findings exits with code 0."""
+        code, _, _ = run_main_with_args([
             "--linters", "pylint", "--verbose", str(tmp_path)
         ])
         assert code == 0
+
+    def test_verbose_prints_scanned(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """--verbose prints 'Scanned' in summary."""
+        _, stdout, _ = run_main_with_args([
+            "--linters", "pylint", "--verbose", str(tmp_path)
+        ])
         assert "Scanned" in stdout
+
+    def test_verbose_prints_findings_count(
+        self, tmp_path: Path, run_main_with_args
+    ) -> None:
+        """--verbose prints 'finding(s)' in summary."""
+        _, stdout, _ = run_main_with_args([
+            "--linters", "pylint", "--verbose", str(tmp_path)
+        ])
         assert "finding(s)" in stdout
 
 
@@ -272,8 +493,20 @@ def test_file_instead_of_directory_exits_2(
     """Providing a file instead of directory exits with code 2."""
     file_path = tmp_path / "file.txt"
     file_path.touch()
-    code, _, stderr = run_main_with_args([
+    code, _, _ = run_main_with_args([
         "--linters", "pylint", str(file_path)
     ])
     assert code == 2
+
+
+@pytest.mark.unit
+def test_file_instead_of_directory_prints_error(
+    tmp_path: Path, run_main_with_args
+) -> None:
+    """Providing a file instead of directory prints error to stderr."""
+    file_path = tmp_path / "file.txt"
+    file_path.touch()
+    _, _, stderr = run_main_with_args([
+        "--linters", "pylint", str(file_path)
+    ])
     assert "is not a directory" in stderr
