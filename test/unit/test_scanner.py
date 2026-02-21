@@ -670,50 +670,44 @@ class TestConfigParserErrors:
 
 
 @pytest.mark.unit
-class TestProcessSharedConfigFile:
-    """Tests for the _process_shared_config_file function."""
-
-    def test_unknown_filename_returns_empty(self, tmp_path: Path) -> None:
-        """Unknown config file returns empty list."""
-        unknown_file = tmp_path / "unknown.txt"
-        unknown_file.write_text("content")
-        findings = _process_shared_config_file(unknown_file, "unknown.txt")
-        assert len(findings) == 0
+def test_unknown_filename_returns_empty(tmp_path: Path) -> None:
+    """Unknown config file returns empty list."""
+    unknown_file = tmp_path / "unknown.txt"
+    unknown_file.write_text("content")
+    findings = _process_shared_config_file(unknown_file, "unknown.txt")
+    assert len(findings) == 0
 
 
 @pytest.mark.unit
-class TestTomlibImportFallback:
-    """Tests for the tomllib import fallback."""
+def test_has_tomllib_false_when_import_fails() -> None:
+    """HAS_TOMLLIB is False when tomllib import fails."""
+    original_import = builtins.__import__
 
-    def test_has_tomllib_false_when_import_fails(self) -> None:
-        """HAS_TOMLLIB is False when tomllib import fails."""
-        original_import = builtins.__import__
+    def mock_import(name, *args, **kwargs):
+        if name == "tomllib":
+            raise ImportError("No module named 'tomllib'")
+        return original_import(name, *args, **kwargs)
 
-        def mock_import(name, *args, **kwargs):
-            if name == "tomllib":
-                raise ImportError("No module named 'tomllib'")
-            return original_import(name, *args, **kwargs)
+    # Remove cached module
+    scanner_module = "assert_no_linter_config_files.scanner"
+    if scanner_module in sys.modules:
+        del sys.modules[scanner_module]
+    if "tomllib" in sys.modules:
+        saved_tomllib = sys.modules["tomllib"]
+        del sys.modules["tomllib"]
+    else:
+        saved_tomllib = None
 
-        # Remove cached module
-        scanner_module = "assert_no_linter_config_files.scanner"
+    try:
+        with patch.object(builtins, "__import__", side_effect=mock_import):
+            # Re-import scanner with mocked import
+            # The module import itself exercises the fallback path
+            importlib.import_module(scanner_module)
+    finally:
+        # Restore modules
+        if saved_tomllib is not None:
+            sys.modules["tomllib"] = saved_tomllib
+        # Force reimport of original scanner
         if scanner_module in sys.modules:
             del sys.modules[scanner_module]
-        if "tomllib" in sys.modules:
-            saved_tomllib = sys.modules["tomllib"]
-            del sys.modules["tomllib"]
-        else:
-            saved_tomllib = None
-
-        try:
-            with patch.object(builtins, "__import__", side_effect=mock_import):
-                # Re-import scanner with mocked import
-                # The module import itself exercises the fallback path
-                importlib.import_module(scanner_module)
-        finally:
-            # Restore modules
-            if saved_tomllib is not None:
-                sys.modules["tomllib"] = saved_tomllib
-            # Force reimport of original scanner
-            if scanner_module in sys.modules:
-                del sys.modules[scanner_module]
-            importlib.import_module(scanner_module)
+        importlib.import_module(scanner_module)

@@ -44,42 +44,36 @@ class TestDetermineExitCode:
 
 
 @pytest.mark.unit
-class TestPrintVerboseSummary:
-    """Tests for _print_verbose_summary helper."""
-
-    def test_prints_summary(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """Prints directory and finding counts."""
-        _print_verbose_summary(3, 5)
-        captured = capsys.readouterr()
-        assert "Scanned 3 directory(ies)" in captured.out
-        assert "found 5 finding(s)" in captured.out
+def test_print_verbose_summary(capsys: pytest.CaptureFixture[str]) -> None:
+    """Prints directory and finding counts."""
+    _print_verbose_summary(3, 5)
+    captured = capsys.readouterr()
+    assert "Scanned 3 directory(ies)" in captured.out
+    assert "found 5 finding(s)" in captured.out
 
 
 @pytest.mark.unit
-class TestHandleFailFast:
-    """Tests for _handle_fail_fast helper."""
-
-    @pytest.mark.parametrize("verbose,quiet,expected_calls", [
-        (True, False, 2),   # verbose: prints finding + summary
-        (False, True, 0),   # quiet: no output
-        (False, False, 1),  # normal: prints finding
-    ])
-    def test_output_modes(
-        self, verbose: bool, quiet: bool, expected_calls: int
-    ) -> None:
-        """Test different output modes for fail-fast."""
-        args = argparse.Namespace(
-            verbose=verbose, quiet=quiet, json=False, count=False
-        )
-        finding = Finding("test.py", "pylint", "config file")
-        with patch("builtins.print") as mock_print:
-            with pytest.raises(SystemExit) as exc_info:
-                _handle_fail_fast(finding, 1, args)
-            assert exc_info.value.code == EXIT_FINDINGS
-            if expected_calls == 0:
-                mock_print.assert_not_called()
-            else:
-                assert mock_print.call_count >= expected_calls
+@pytest.mark.parametrize("verbose,quiet,expected_calls", [
+    (True, False, 2),   # verbose: prints finding + summary
+    (False, True, 0),   # quiet: no output
+    (False, False, 1),  # normal: prints finding
+])
+def test_handle_fail_fast_output_modes(
+    verbose: bool, quiet: bool, expected_calls: int
+) -> None:
+    """Test different output modes for fail-fast."""
+    args = argparse.Namespace(
+        verbose=verbose, quiet=quiet, json=False, count=False
+    )
+    finding = Finding("test.py", "pylint", "config file")
+    with patch("builtins.print") as mock_print:
+        with pytest.raises(SystemExit) as exc_info:
+            _handle_fail_fast(finding, 1, args)
+        assert exc_info.value.code == EXIT_FINDINGS
+        if expected_calls == 0:
+            mock_print.assert_not_called()
+        else:
+            assert mock_print.call_count >= expected_calls
 
 
 @pytest.mark.unit
@@ -181,23 +175,20 @@ class TestOSErrorHandling:
 
 
 @pytest.mark.unit
-class TestQuietWithFailFast:
-    """Tests for --quiet combined with --fail-fast."""
-
-    def test_quiet_and_fail_fast_no_output(
-        self, tmp_path: Path, run_main_with_args
-    ) -> None:
-        """--quiet with --fail-fast produces no output."""
-        (tmp_path / ".pylintrc").touch()
-        (tmp_path / "mypy.ini").touch()
-        code, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy",
-            "--quiet",
-            "--fail-fast",
-            str(tmp_path)
-        ])
-        assert code == 1
-        assert stdout == ""
+def test_quiet_and_fail_fast_no_output(
+    tmp_path: Path, run_main_with_args
+) -> None:
+    """--quiet with --fail-fast produces no output."""
+    (tmp_path / ".pylintrc").touch()
+    (tmp_path / "mypy.ini").touch()
+    code, stdout, _ = run_main_with_args([
+        "--linters", "pylint,mypy",
+        "--quiet",
+        "--fail-fast",
+        str(tmp_path)
+    ])
+    assert code == 1
+    assert stdout == ""
 
 
 @pytest.mark.unit
@@ -237,16 +228,13 @@ class TestOutputFindings:
 
 
 @pytest.mark.unit
-class TestMainInvalidLinter:
-    """Tests for invalid linter handling in main()."""
-
-    def test_invalid_linter_exits_2(self, tmp_path: Path, run_main_with_args) -> None:
-        """Invalid linter name exits with code 2."""
-        code, _, stderr = run_main_with_args([
-            "--linters", "invalid_linter", str(tmp_path)
-        ])
-        assert code == 2
-        assert "Invalid linter" in stderr
+def test_invalid_linter_exits_2(tmp_path: Path, run_main_with_args) -> None:
+    """Invalid linter name exits with code 2."""
+    code, _, stderr = run_main_with_args([
+        "--linters", "invalid_linter", str(tmp_path)
+    ])
+    assert code == 2
+    assert "Invalid linter" in stderr
 
 
 @pytest.mark.unit
@@ -278,17 +266,14 @@ class TestMainVerbose:
 
 
 @pytest.mark.unit
-class TestMainNonDirectory:
-    """Tests for non-directory path handling in main()."""
-
-    def test_file_instead_of_directory_exits_2(
-        self, tmp_path: Path, run_main_with_args
-    ) -> None:
-        """Providing a file instead of directory exits with code 2."""
-        file_path = tmp_path / "file.txt"
-        file_path.touch()
-        code, _, stderr = run_main_with_args([
-            "--linters", "pylint", str(file_path)
-        ])
-        assert code == 2
-        assert "is not a directory" in stderr
+def test_file_instead_of_directory_exits_2(
+    tmp_path: Path, run_main_with_args
+) -> None:
+    """Providing a file instead of directory exits with code 2."""
+    file_path = tmp_path / "file.txt"
+    file_path.touch()
+    code, _, stderr = run_main_with_args([
+        "--linters", "pylint", str(file_path)
+    ])
+    assert code == 2
+    assert "is not a directory" in stderr

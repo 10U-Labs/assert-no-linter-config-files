@@ -89,12 +89,15 @@ jobs:
           node-version: "20"
       - name: Install dependencies
         run: |
-          pip install yamllint pylint pytest mypy assert-no-inline-directives -e .
+          pip install yamllint pylint pytest mypy \
+            assert-no-inline-directives assert-one-assert-per-pytest -e .
           npm install -g markdownlint-cli jscpd
       - name: Assert no linter config files
         run: |
           assert-no-linter-config-files --verbose \
             --linters jscpd,mypy,pylint,pytest,yamllint .
+      - name: Assert one assert per pytest
+        run: assert-one-assert-per-pytest --verbose 'test/**/*.py'
       - name: Assert no inline lint disables
         run: |
           assert-no-inline-directives --verbose \
@@ -112,13 +115,9 @@ jobs:
       - name: markdownlint
         run: markdownlint '*.md'
       - name: pylint (src)
-        run: |
-          python3 -m pylint src/ --fail-on=C,R,W --fail-under=10.0 \
-            --disable=import-outside-toplevel,too-few-public-methods
+        run: python3 -m pylint src/ --fail-on=C,R,W --fail-under=10.0
       - name: pylint (test)
-        run: |
-          python3 -m pylint test/ --fail-on=C,R,W --fail-under=10.0 \
-            --disable=import-outside-toplevel,too-few-public-methods
+        run: python3 -m pylint test/ --fail-on=C,R,W --fail-under=10.0
       - name: mypy (src)
         run: python3 -m mypy --strict src/
       - name: mypy (test)
