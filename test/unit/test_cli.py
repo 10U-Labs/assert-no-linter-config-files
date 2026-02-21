@@ -79,22 +79,33 @@ def test_handle_fail_fast_exits_with_findings_code(
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("verbose,quiet,expected_calls", [
-    (True, False, 2),   # verbose: prints finding + summary
-    (False, False, 1),  # normal: prints finding
-])
-def test_handle_fail_fast_prints_output(
-    verbose: bool, quiet: bool, expected_calls: int
-) -> None:
-    """Test fail-fast prints expected output in non-quiet modes."""
+def test_handle_fail_fast_verbose_prints_twice() -> None:
+    """Test fail-fast in verbose mode prints finding and summary."""
     args = argparse.Namespace(
-        verbose=verbose, quiet=quiet, json=False, count=False
+        verbose=True, quiet=False, json=False, count=False
     )
     finding = Finding("test.py", "pylint", "config file")
     with patch("builtins.print") as mock_print:
-        with pytest.raises(SystemExit):
+        try:
             _handle_fail_fast(finding, 1, args)
-    assert mock_print.call_count >= expected_calls
+        except SystemExit:
+            pass
+    assert mock_print.call_count >= 2
+
+
+@pytest.mark.unit
+def test_handle_fail_fast_normal_prints_once() -> None:
+    """Test fail-fast in normal mode prints finding."""
+    args = argparse.Namespace(
+        verbose=False, quiet=False, json=False, count=False
+    )
+    finding = Finding("test.py", "pylint", "config file")
+    with patch("builtins.print") as mock_print:
+        try:
+            _handle_fail_fast(finding, 1, args)
+        except SystemExit:
+            pass
+    assert mock_print.call_count >= 1
 
 
 @pytest.mark.unit
