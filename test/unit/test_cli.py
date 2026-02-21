@@ -371,11 +371,15 @@ class TestOutputFindings:
         """--json outputs findings as JSON array with correct length."""
         assert len(json_output_parsed) == 2
 
-    def test_json_output_first_tool_is_pylint(self, json_output_parsed: list[dict[str, str]]) -> None:
+    def test_json_output_first_tool_is_pylint(
+        self, json_output_parsed: list[dict[str, str]]
+    ) -> None:
         """--json first finding has tool == pylint."""
         assert json_output_parsed[0]["tool"] == "pylint"
 
-    def test_json_output_second_tool_is_mypy(self, json_output_parsed: list[dict[str, str]]) -> None:
+    def test_json_output_second_tool_is_mypy(
+        self, json_output_parsed: list[dict[str, str]]
+    ) -> None:
         """--json second finding has tool == mypy."""
         assert json_output_parsed[1]["tool"] == "mypy"
 
