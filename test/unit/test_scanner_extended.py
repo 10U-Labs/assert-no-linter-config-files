@@ -408,41 +408,35 @@ class TestScanDirectoryWithFilters:
         )
         assert findings[0].tool == "mypy"
 
-    def test_exclude_multiple_patterns_returns_one(
+    @pytest.fixture
+    def exclude_multiple_findings(
         self, tmp_path: Path
+    ) -> list[Finding]:
+        """Scan with multiple exclude patterns on lib and external."""
+        lib_dir = tmp_path / "lib"
+        ext_dir = tmp_path / "external"
+        lib_dir.mkdir()
+        ext_dir.mkdir()
+        (lib_dir / ".pylintrc").touch()
+        (ext_dir / "mypy.ini").touch()
+        (tmp_path / ".yamllint").touch()
+        return scan_directory(
+            tmp_path,
+            linters=VALID_LINTERS,
+            exclude_patterns=["*lib*", "*external*"],
+        )
+
+    def test_exclude_multiple_patterns_returns_one(
+        self, exclude_multiple_findings: list[Finding]
     ) -> None:
         """Multiple exclude patterns return one finding."""
-        lib_dir = tmp_path / "lib"
-        ext_dir = tmp_path / "external"
-        lib_dir.mkdir()
-        ext_dir.mkdir()
-        (lib_dir / ".pylintrc").touch()
-        (ext_dir / "mypy.ini").touch()
-        (tmp_path / ".yamllint").touch()
-        findings = scan_directory(
-            tmp_path,
-            linters=VALID_LINTERS,
-            exclude_patterns=["*lib*", "*external*"],
-        )
-        assert len(findings) == 1
+        assert len(exclude_multiple_findings) == 1
 
     def test_exclude_multiple_patterns_has_correct_tool(
-        self, tmp_path: Path
+        self, exclude_multiple_findings: list[Finding]
     ) -> None:
         """Multiple exclude patterns report the correct tool."""
-        lib_dir = tmp_path / "lib"
-        ext_dir = tmp_path / "external"
-        lib_dir.mkdir()
-        ext_dir.mkdir()
-        (lib_dir / ".pylintrc").touch()
-        (ext_dir / "mypy.ini").touch()
-        (tmp_path / ".yamllint").touch()
-        findings = scan_directory(
-            tmp_path,
-            linters=VALID_LINTERS,
-            exclude_patterns=["*lib*", "*external*"],
-        )
-        assert findings[0].tool == "yamllint"
+        assert exclude_multiple_findings[0].tool == "yamllint"
 
     def test_filter_embedded_config_returns_one(
         self, tmp_path: Path, pyproject_mypy_pylint_content: str

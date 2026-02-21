@@ -122,123 +122,80 @@ class TestLintersFlag:
 class TestExcludeFlag:
     """Tests for the --exclude flag."""
 
-    def test_exclude_pattern_exits_1(
+    @pytest.fixture
+    def exclude_vendor_result(
         self, tmp_path: Path, run_main_with_args
+    ) -> tuple[int, str, str]:
+        """Run CLI with --exclude *vendor* on vendor/.pylintrc + mypy.ini."""
+        vendor = tmp_path / "vendor"
+        vendor.mkdir()
+        (vendor / ".pylintrc").touch()
+        (tmp_path / "mypy.ini").touch()
+        return run_main_with_args([
+            "--linters", "pylint,mypy",
+            "--exclude", "*vendor*", str(tmp_path)
+        ])
+
+    def test_exclude_pattern_exits_1(
+        self, exclude_vendor_result: tuple[int, str, str]
     ) -> None:
         """--exclude skips matching paths but still exits 1."""
-        vendor = tmp_path / "vendor"
-        vendor.mkdir()
-        (vendor / ".pylintrc").touch()
-        (tmp_path / "mypy.ini").touch()
-        code, _, _ = run_main_with_args([
-            "--linters", "pylint,mypy",
-            "--exclude", "*vendor*", str(tmp_path)
-        ])
-        assert code == 1
+        assert exclude_vendor_result[0] == 1
 
     def test_exclude_pattern_includes_mypy(
-        self, tmp_path: Path, run_main_with_args
+        self, exclude_vendor_result: tuple[int, str, str]
     ) -> None:
         """--exclude includes non-excluded findings."""
-        vendor = tmp_path / "vendor"
-        vendor.mkdir()
-        (vendor / ".pylintrc").touch()
-        (tmp_path / "mypy.ini").touch()
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy",
-            "--exclude", "*vendor*", str(tmp_path)
-        ])
-        assert "mypy" in stdout
+        assert "mypy" in exclude_vendor_result[1]
 
     def test_exclude_pattern_excludes_pylint(
-        self, tmp_path: Path, run_main_with_args
+        self, exclude_vendor_result: tuple[int, str, str]
     ) -> None:
         """--exclude skips matching paths so pylint is not reported."""
-        vendor = tmp_path / "vendor"
-        vendor.mkdir()
-        (vendor / ".pylintrc").touch()
-        (tmp_path / "mypy.ini").touch()
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy",
-            "--exclude", "*vendor*", str(tmp_path)
+        assert "pylint" not in exclude_vendor_result[1]
+
+    @pytest.fixture
+    def exclude_multiple_result(
+        self, tmp_path: Path, run_main_with_args
+    ) -> tuple[int, str, str]:
+        """Run CLI with multiple --exclude on deps/third_party dirs."""
+        deps = tmp_path / "deps"
+        third = tmp_path / "third_party"
+        deps.mkdir()
+        third.mkdir()
+        (deps / ".pylintrc").touch()
+        (third / "mypy.ini").touch()
+        (tmp_path / ".yamllint").touch()
+        return run_main_with_args([
+            "--linters", "pylint,mypy,yamllint",
+            "--exclude", "*deps*",
+            "--exclude", "*third_party*",
+            str(tmp_path)
         ])
-        assert "pylint" not in stdout
 
     def test_exclude_multiple_exits_1(
-        self, tmp_path: Path, run_main_with_args
+        self, exclude_multiple_result: tuple[int, str, str]
     ) -> None:
         """--exclude can be repeated and still exits 1."""
-        deps = tmp_path / "deps"
-        third = tmp_path / "third_party"
-        deps.mkdir()
-        third.mkdir()
-        (deps / ".pylintrc").touch()
-        (third / "mypy.ini").touch()
-        (tmp_path / ".yamllint").touch()
-        code, _, _ = run_main_with_args([
-            "--linters", "pylint,mypy,yamllint",
-            "--exclude", "*deps*",
-            "--exclude", "*third_party*",
-            str(tmp_path)
-        ])
-        assert code == 1
+        assert exclude_multiple_result[0] == 1
 
     def test_exclude_multiple_includes_yamllint(
-        self, tmp_path: Path, run_main_with_args
+        self, exclude_multiple_result: tuple[int, str, str]
     ) -> None:
         """--exclude can be repeated; non-excluded findings reported."""
-        deps = tmp_path / "deps"
-        third = tmp_path / "third_party"
-        deps.mkdir()
-        third.mkdir()
-        (deps / ".pylintrc").touch()
-        (third / "mypy.ini").touch()
-        (tmp_path / ".yamllint").touch()
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy,yamllint",
-            "--exclude", "*deps*",
-            "--exclude", "*third_party*",
-            str(tmp_path)
-        ])
-        assert "yamllint" in stdout
+        assert "yamllint" in exclude_multiple_result[1]
 
     def test_exclude_multiple_excludes_pylint(
-        self, tmp_path: Path, run_main_with_args
+        self, exclude_multiple_result: tuple[int, str, str]
     ) -> None:
         """--exclude with *deps* excludes pylint config in deps."""
-        deps = tmp_path / "deps"
-        third = tmp_path / "third_party"
-        deps.mkdir()
-        third.mkdir()
-        (deps / ".pylintrc").touch()
-        (third / "mypy.ini").touch()
-        (tmp_path / ".yamllint").touch()
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy,yamllint",
-            "--exclude", "*deps*",
-            "--exclude", "*third_party*",
-            str(tmp_path)
-        ])
-        assert "pylint" not in stdout
+        assert "pylint" not in exclude_multiple_result[1]
 
     def test_exclude_multiple_excludes_mypy(
-        self, tmp_path: Path, run_main_with_args
+        self, exclude_multiple_result: tuple[int, str, str]
     ) -> None:
         """--exclude with *third_party* excludes mypy config."""
-        deps = tmp_path / "deps"
-        third = tmp_path / "third_party"
-        deps.mkdir()
-        third.mkdir()
-        (deps / ".pylintrc").touch()
-        (third / "mypy.ini").touch()
-        (tmp_path / ".yamllint").touch()
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy,yamllint",
-            "--exclude", "*deps*",
-            "--exclude", "*third_party*",
-            str(tmp_path)
-        ])
-        assert "mypy" not in stdout
+        assert "mypy" not in exclude_multiple_result[1]
 
 
 @pytest.mark.integration

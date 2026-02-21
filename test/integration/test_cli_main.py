@@ -108,37 +108,34 @@ class TestMainBasic:
         ])
         assert code == 1
 
-    def test_multiple_directories_outputs_pylint(
+    @pytest.fixture
+    def multi_dir_stdout(
         self, tmp_path: Path, run_main_with_args
+    ) -> str:
+        """Run CLI on two dirs with .pylintrc and mypy.ini, return stdout."""
+        first_dir = tmp_path / "first"
+        second_dir = tmp_path / "second"
+        first_dir.mkdir()
+        second_dir.mkdir()
+        (first_dir / ".pylintrc").touch()
+        (second_dir / "mypy.ini").touch()
+        _, stdout, _ = run_main_with_args([
+            "--linters", "pylint,mypy",
+            str(first_dir), str(second_dir)
+        ])
+        return stdout
+
+    def test_multiple_directories_outputs_pylint(
+        self, multi_dir_stdout: str
     ) -> None:
         """Output contains pylint when scanning multiple directories."""
-        first_dir = tmp_path / "first"
-        second_dir = tmp_path / "second"
-        first_dir.mkdir()
-        second_dir.mkdir()
-        (first_dir / ".pylintrc").touch()
-        (second_dir / "mypy.ini").touch()
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy",
-            str(first_dir), str(second_dir)
-        ])
-        assert "pylint" in stdout
+        assert "pylint" in multi_dir_stdout
 
     def test_multiple_directories_outputs_mypy(
-        self, tmp_path: Path, run_main_with_args
+        self, multi_dir_stdout: str
     ) -> None:
         """Output contains mypy when scanning multiple directories."""
-        first_dir = tmp_path / "first"
-        second_dir = tmp_path / "second"
-        first_dir.mkdir()
-        second_dir.mkdir()
-        (first_dir / ".pylintrc").touch()
-        (second_dir / "mypy.ini").touch()
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint,mypy",
-            str(first_dir), str(second_dir)
-        ])
-        assert "mypy" in stdout
+        assert "mypy" in multi_dir_stdout
 
     def test_help_exits_0(self, run_main_with_args) -> None:
         """--help exits with code 0."""

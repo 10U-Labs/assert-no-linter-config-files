@@ -78,11 +78,12 @@ def test_handle_fail_fast_exits_with_findings_code(
             _handle_fail_fast(finding, 1, args)
 
 
-@pytest.mark.unit
-def test_handle_fail_fast_verbose_prints_twice() -> None:
-    """Test fail-fast in verbose mode prints finding and summary."""
+def _run_fail_fast_with_mock_print(
+    verbose: bool, quiet: bool
+) -> int:
+    """Run _handle_fail_fast and return mock_print call count."""
     args = argparse.Namespace(
-        verbose=True, quiet=False, json=False, count=False
+        verbose=verbose, quiet=quiet, json=False, count=False
     )
     finding = Finding("test.py", "pylint", "config file")
     with patch("builtins.print") as mock_print:
@@ -90,22 +91,19 @@ def test_handle_fail_fast_verbose_prints_twice() -> None:
             _handle_fail_fast(finding, 1, args)
         except SystemExit:
             pass
-    assert mock_print.call_count >= 2
+    return mock_print.call_count
+
+
+@pytest.mark.unit
+def test_handle_fail_fast_verbose_prints_twice() -> None:
+    """Test fail-fast in verbose mode prints finding and summary."""
+    assert _run_fail_fast_with_mock_print(verbose=True, quiet=False) >= 2
 
 
 @pytest.mark.unit
 def test_handle_fail_fast_normal_prints_once() -> None:
     """Test fail-fast in normal mode prints finding."""
-    args = argparse.Namespace(
-        verbose=False, quiet=False, json=False, count=False
-    )
-    finding = Finding("test.py", "pylint", "config file")
-    with patch("builtins.print") as mock_print:
-        try:
-            _handle_fail_fast(finding, 1, args)
-        except SystemExit:
-            pass
-    assert mock_print.call_count >= 1
+    assert _run_fail_fast_with_mock_print(verbose=False, quiet=False) >= 1
 
 
 @pytest.mark.unit
@@ -149,8 +147,13 @@ class TestProcessDirectory:
             )
             assert had_error is False
 
-    def test_verbose_prints_scanning(self, tmp_path: Path) -> None:
-        """In verbose mode, prints scanning message."""
+    @staticmethod
+    def _run_verbose_process_directory(
+        tmp_path: Path, create_pylintrc: bool = False,
+    ) -> list[str]:
+        """Run _process_directory in verbose mode, return str of calls."""
+        if create_pylintrc:
+            (tmp_path / ".pylintrc").touch()
         args = argparse.Namespace(
             verbose=True, exclude=[], fail_fast=False
         )
@@ -159,7 +162,12 @@ class TestProcessDirectory:
             _process_directory(
                 tmp_path, args, frozenset(["pylint"]), 0, all_findings
             )
-            assert any("Scanning:" in str(call) for call in mock_print.call_args_list)
+        return [str(call) for call in mock_print.call_args_list]
+
+    def test_verbose_prints_scanning(self, tmp_path: Path) -> None:
+        """In verbose mode, prints scanning message."""
+        calls = self._run_verbose_process_directory(tmp_path)
+        assert any("Scanning:" in call for call in calls)
 
     def test_oserror_returns_zero_dirs_scanned(self, tmp_path: Path) -> None:
         """OSError during scan returns dirs_scanned == 0."""
@@ -229,17 +237,10 @@ class TestProcessDirectory:
 
     def test_verbose_prints_findings(self, tmp_path: Path) -> None:
         """In verbose mode, prints each finding."""
-        (tmp_path / ".pylintrc").touch()
-        args = argparse.Namespace(
-            verbose=True, exclude=[], fail_fast=False
+        calls = self._run_verbose_process_directory(
+            tmp_path, create_pylintrc=True
         )
-        all_findings: list[Finding] = []
-        with patch("builtins.print") as mock_print:
-            _process_directory(
-                tmp_path, args, frozenset(["pylint"]), 0, all_findings
-            )
-            calls = [str(call) for call in mock_print.call_args_list]
-            assert any("pylint" in call for call in calls)
+        assert any("pylint" in call for call in calls)
 
 
 @pytest.mark.unit
@@ -355,38 +356,28 @@ def test_quiet_and_fail_fast_no_output(
 class TestOutputFindings:
     """Tests for output_findings helper."""
 
-    def test_json_output_has_two_items(self, capsys: pytest.CaptureFixture[str]) -> None:
+    @pytest.fixture
+    def json_output_parsed(self, capsys: pytest.CaptureFixture[str]) -> list[dict[str, str]]:
+        """Parse JSON output from output_findings with two findings."""
+        findings = [
+            Finding("./test.py", "pylint", "config file"),
+            Finding("./mypy.ini", "mypy", "config file"),
+        ]
+        output_findings(findings, use_json=True, use_count=False)
+        captured = capsys.readouterr()
+        return json.loads(captured.out)
+
+    def test_json_output_has_two_items(self, json_output_parsed: list[dict[str, str]]) -> None:
         """--json outputs findings as JSON array with correct length."""
-        findings = [
-            Finding("./test.py", "pylint", "config file"),
-            Finding("./mypy.ini", "mypy", "config file"),
-        ]
-        output_findings(findings, use_json=True, use_count=False)
-        captured = capsys.readouterr()
-        parsed = json.loads(captured.out)
-        assert len(parsed) == 2
+        assert len(json_output_parsed) == 2
 
-    def test_json_output_first_tool_is_pylint(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_json_output_first_tool_is_pylint(self, json_output_parsed: list[dict[str, str]]) -> None:
         """--json first finding has tool == pylint."""
-        findings = [
-            Finding("./test.py", "pylint", "config file"),
-            Finding("./mypy.ini", "mypy", "config file"),
-        ]
-        output_findings(findings, use_json=True, use_count=False)
-        captured = capsys.readouterr()
-        parsed = json.loads(captured.out)
-        assert parsed[0]["tool"] == "pylint"
+        assert json_output_parsed[0]["tool"] == "pylint"
 
-    def test_json_output_second_tool_is_mypy(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_json_output_second_tool_is_mypy(self, json_output_parsed: list[dict[str, str]]) -> None:
         """--json second finding has tool == mypy."""
-        findings = [
-            Finding("./test.py", "pylint", "config file"),
-            Finding("./mypy.ini", "mypy", "config file"),
-        ]
-        output_findings(findings, use_json=True, use_count=False)
-        captured = capsys.readouterr()
-        parsed = json.loads(captured.out)
-        assert parsed[1]["tool"] == "mypy"
+        assert json_output_parsed[1]["tool"] == "mypy"
 
     def test_count_output(self, capsys: pytest.CaptureFixture[str]) -> None:
         """--count outputs finding count only."""

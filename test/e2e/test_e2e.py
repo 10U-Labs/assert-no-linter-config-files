@@ -1,5 +1,6 @@
 """End-to-end tests for assert-no-linter-config-files."""
 
+import subprocess
 from pathlib import Path
 from test.e2e.conftest import run_cli
 
@@ -58,42 +59,39 @@ class TestEndToEndBasic:
         result = run_cli("--linters", "pylint", str(tmp_path))
         assert "config file" in result.stdout
 
-    def test_multiple_config_files_exits_1(
+    @pytest.fixture
+    def multiple_config_result(
         self, tmp_path: Path
+    ) -> subprocess.CompletedProcess[str]:
+        """Run CLI on dir with .pylintrc, .yamllint, and mypy.ini."""
+        (tmp_path / ".pylintrc").touch()
+        (tmp_path / ".yamllint").touch()
+        (tmp_path / "mypy.ini").touch()
+        return run_cli(
+            "--linters", "pylint,yamllint,mypy", str(tmp_path)
+        )
+
+    def test_multiple_config_files_exits_1(
+        self,
+        multiple_config_result: subprocess.CompletedProcess[str],
     ) -> None:
         """Multiple config files exits 1."""
-        (tmp_path / ".pylintrc").touch()
-        (tmp_path / ".yamllint").touch()
-        (tmp_path / "mypy.ini").touch()
-        result = run_cli(
-            "--linters", "pylint,yamllint,mypy", str(tmp_path)
-        )
-        assert result.returncode == 1
+        assert multiple_config_result.returncode == 1
 
     def test_multiple_config_files_reports_one_line_each(
-        self, tmp_path: Path
+        self,
+        multiple_config_result: subprocess.CompletedProcess[str],
     ) -> None:
         """Multiple config files produce one output line each."""
-        (tmp_path / ".pylintrc").touch()
-        (tmp_path / ".yamllint").touch()
-        (tmp_path / "mypy.ini").touch()
-        result = run_cli(
-            "--linters", "pylint,yamllint,mypy", str(tmp_path)
-        )
-        lines = result.stdout.strip().split("\n")
+        lines = multiple_config_result.stdout.strip().split("\n")
         assert len(lines) == 3
 
     def test_multiple_config_files_reports_all_linters(
-        self, tmp_path: Path
+        self,
+        multiple_config_result: subprocess.CompletedProcess[str],
     ) -> None:
         """Multiple config files report all relevant linters."""
-        (tmp_path / ".pylintrc").touch()
-        (tmp_path / ".yamllint").touch()
-        (tmp_path / "mypy.ini").touch()
-        result = run_cli(
-            "--linters", "pylint,yamllint,mypy", str(tmp_path)
-        )
-        lines = result.stdout.strip().split("\n")
+        lines = multiple_config_result.stdout.strip().split("\n")
         linters = {line.split(":")[1] for line in lines}
         assert linters == {"pylint", "yamllint", "mypy"}
 
@@ -309,54 +307,43 @@ class TestEndToEndConfigDetection:
         result = run_cli("--linters", "pytest", str(tmp_path))
         assert "pytest" in result.stdout
 
-    def test_all_jscpd_config_files_exits_1(
+    @pytest.fixture
+    def jscpd_all_configs_result(
         self, tmp_path: Path
+    ) -> subprocess.CompletedProcess[str]:
+        """Run CLI on dir with all jscpd config file variants."""
+        jscpd_files = [
+            ".jscpd.json", ".jscpd.yml", ".jscpd.yaml",
+            ".jscpd.toml", ".jscpdrc", ".jscpdrc.json",
+            ".jscpdrc.yml", ".jscpdrc.yaml",
+        ]
+        for i, filename in enumerate(jscpd_files):
+            subdir = tmp_path / f"dir{i}"
+            subdir.mkdir()
+            (subdir / filename).touch()
+        return run_cli("--linters", "jscpd", str(tmp_path))
+
+    def test_all_jscpd_config_files_exits_1(
+        self,
+        jscpd_all_configs_result: subprocess.CompletedProcess[str],
     ) -> None:
         """All jscpd config file variants cause exit 1."""
-        jscpd_files = [
-            ".jscpd.json", ".jscpd.yml", ".jscpd.yaml",
-            ".jscpd.toml", ".jscpdrc", ".jscpdrc.json",
-            ".jscpdrc.yml", ".jscpdrc.yaml",
-        ]
-        for i, filename in enumerate(jscpd_files):
-            subdir = tmp_path / f"dir{i}"
-            subdir.mkdir()
-            (subdir / filename).touch()
-        result = run_cli("--linters", "jscpd", str(tmp_path))
-        assert result.returncode == 1
+        assert jscpd_all_configs_result.returncode == 1
 
     def test_all_jscpd_config_files_reports_eight(
-        self, tmp_path: Path
+        self,
+        jscpd_all_configs_result: subprocess.CompletedProcess[str],
     ) -> None:
         """All jscpd config file variants produce eight lines."""
-        jscpd_files = [
-            ".jscpd.json", ".jscpd.yml", ".jscpd.yaml",
-            ".jscpd.toml", ".jscpdrc", ".jscpdrc.json",
-            ".jscpdrc.yml", ".jscpdrc.yaml",
-        ]
-        for i, filename in enumerate(jscpd_files):
-            subdir = tmp_path / f"dir{i}"
-            subdir.mkdir()
-            (subdir / filename).touch()
-        result = run_cli("--linters", "jscpd", str(tmp_path))
-        lines = result.stdout.strip().split("\n")
+        lines = jscpd_all_configs_result.stdout.strip().split("\n")
         assert len(lines) == 8
 
     def test_all_jscpd_config_files_all_reference_jscpd(
-        self, tmp_path: Path
+        self,
+        jscpd_all_configs_result: subprocess.CompletedProcess[str],
     ) -> None:
         """All jscpd config file output lines reference jscpd."""
-        jscpd_files = [
-            ".jscpd.json", ".jscpd.yml", ".jscpd.yaml",
-            ".jscpd.toml", ".jscpdrc", ".jscpdrc.json",
-            ".jscpdrc.yml", ".jscpdrc.yaml",
-        ]
-        for i, filename in enumerate(jscpd_files):
-            subdir = tmp_path / f"dir{i}"
-            subdir.mkdir()
-            (subdir / filename).touch()
-        result = run_cli("--linters", "jscpd", str(tmp_path))
-        lines = result.stdout.strip().split("\n")
+        lines = jscpd_all_configs_result.stdout.strip().split("\n")
         assert all("jscpd" in line for line in lines)
 
 
@@ -384,160 +371,113 @@ class TestEndToEndDirectories:
         )
         assert ".yamllint" in result.stdout
 
-    def test_multiple_directories_exits_1(
+    @pytest.fixture
+    def multi_dir_result(
         self, tmp_path: Path
+    ) -> subprocess.CompletedProcess[str]:
+        """Run CLI on two project dirs with .pylintrc and mypy.ini."""
+        project_a = tmp_path / "project_a"
+        project_b = tmp_path / "project_b"
+        project_a.mkdir()
+        project_b.mkdir()
+        (project_a / ".pylintrc").touch()
+        (project_b / "mypy.ini").touch()
+        return run_cli(
+            "--linters", "pylint,mypy",
+            str(project_a), str(project_b),
+        )
+
+    def test_multiple_directories_exits_1(
+        self, multi_dir_result: subprocess.CompletedProcess[str]
     ) -> None:
         """Multiple directories with config files exits 1."""
-        project_a = tmp_path / "project_a"
-        project_b = tmp_path / "project_b"
-        project_a.mkdir()
-        project_b.mkdir()
-        (project_a / ".pylintrc").touch()
-        (project_b / "mypy.ini").touch()
-        result = run_cli(
-            "--linters", "pylint,mypy",
-            str(project_a), str(project_b),
-        )
-        assert result.returncode == 1
+        assert multi_dir_result.returncode == 1
 
     def test_multiple_directories_reports_pylint(
-        self, tmp_path: Path
+        self, multi_dir_result: subprocess.CompletedProcess[str]
     ) -> None:
         """Multiple directories report pylint finding."""
-        project_a = tmp_path / "project_a"
-        project_b = tmp_path / "project_b"
-        project_a.mkdir()
-        project_b.mkdir()
-        (project_a / ".pylintrc").touch()
-        (project_b / "mypy.ini").touch()
-        result = run_cli(
-            "--linters", "pylint,mypy",
-            str(project_a), str(project_b),
-        )
-        assert "pylint" in result.stdout
+        assert "pylint" in multi_dir_result.stdout
 
     def test_multiple_directories_reports_mypy(
-        self, tmp_path: Path
+        self, multi_dir_result: subprocess.CompletedProcess[str]
     ) -> None:
         """Multiple directories report mypy finding."""
-        project_a = tmp_path / "project_a"
-        project_b = tmp_path / "project_b"
-        project_a.mkdir()
-        project_b.mkdir()
-        (project_a / ".pylintrc").touch()
-        (project_b / "mypy.ini").touch()
-        result = run_cli(
-            "--linters", "pylint,mypy",
-            str(project_a), str(project_b),
+        assert "mypy" in multi_dir_result.stdout
+
+    @pytest.fixture
+    def mixed_dirs_result(
+        self, tmp_path: Path
+    ) -> subprocess.CompletedProcess[str]:
+        """Run CLI on clean dir + dirty dir with .pylintrc."""
+        clean_dir = tmp_path / "clean"
+        dirty_dir = tmp_path / "dirty"
+        clean_dir.mkdir()
+        dirty_dir.mkdir()
+        (clean_dir / "main.py").touch()
+        (dirty_dir / ".pylintrc").touch()
+        return run_cli(
+            "--linters", "pylint",
+            str(clean_dir), str(dirty_dir),
         )
-        assert "mypy" in result.stdout
 
     def test_mixed_clean_and_dirty_dirs_exits_1(
-        self, tmp_path: Path
+        self, mixed_dirs_result: subprocess.CompletedProcess[str]
     ) -> None:
         """Findings from dirty dir cause exit 1."""
-        clean_dir = tmp_path / "clean"
-        dirty_dir = tmp_path / "dirty"
-        clean_dir.mkdir()
-        dirty_dir.mkdir()
-        (clean_dir / "main.py").touch()
-        (dirty_dir / ".pylintrc").touch()
-        result = run_cli(
-            "--linters", "pylint",
-            str(clean_dir), str(dirty_dir),
-        )
-        assert result.returncode == 1
+        assert mixed_dirs_result.returncode == 1
 
     def test_mixed_clean_and_dirty_dirs_reports_linter(
-        self, tmp_path: Path
+        self, mixed_dirs_result: subprocess.CompletedProcess[str]
     ) -> None:
         """Findings from dirty dir are reported."""
-        clean_dir = tmp_path / "clean"
-        dirty_dir = tmp_path / "dirty"
-        clean_dir.mkdir()
-        dirty_dir.mkdir()
-        (clean_dir / "main.py").touch()
-        (dirty_dir / ".pylintrc").touch()
-        result = run_cli(
-            "--linters", "pylint",
-            str(clean_dir), str(dirty_dir),
+        assert "pylint" in mixed_dirs_result.stdout
+
+    @pytest.fixture
+    def complex_project_result(
+        self, tmp_path: Path
+    ) -> subprocess.CompletedProcess[str]:
+        """Run CLI on a complex project with mypy in pyproject.toml."""
+        src = tmp_path / "src"
+        tests = tmp_path / "tests"
+        docs = tmp_path / "docs"
+        src.mkdir()
+        tests.mkdir()
+        docs.mkdir()
+        (tmp_path / "pyproject.toml").write_text(
+            "[project]\n"
+            'name = "myproject"\n\n'
+            "[tool.mypy]\n"
+            "strict = true\n"
         )
-        assert "pylint" in result.stdout
+        (tmp_path / "setup.cfg").write_text(
+            "[metadata]\nname = myproject\n"
+        )
+        (src / "main.py").touch()
+        (tests / "test_main.py").touch()
+        (docs / "README.md").touch()
+        return run_cli("--linters", "mypy", str(tmp_path))
 
     def test_complex_project_structure_exits_1(
-        self, tmp_path: Path
+        self,
+        complex_project_result: subprocess.CompletedProcess[str],
     ) -> None:
         """Complex project with mypy config exits 1."""
-        src = tmp_path / "src"
-        tests = tmp_path / "tests"
-        docs = tmp_path / "docs"
-        src.mkdir()
-        tests.mkdir()
-        docs.mkdir()
-        (tmp_path / "pyproject.toml").write_text(
-            "[project]\n"
-            'name = "myproject"\n\n'
-            "[tool.mypy]\n"
-            "strict = true\n"
-        )
-        (tmp_path / "setup.cfg").write_text(
-            "[metadata]\nname = myproject\n"
-        )
-        (src / "main.py").touch()
-        (tests / "test_main.py").touch()
-        (docs / "README.md").touch()
-        result = run_cli("--linters", "mypy", str(tmp_path))
-        assert result.returncode == 1
+        assert complex_project_result.returncode == 1
 
     def test_complex_project_structure_reports_mypy(
-        self, tmp_path: Path
+        self,
+        complex_project_result: subprocess.CompletedProcess[str],
     ) -> None:
         """Complex project with mypy config reports mypy."""
-        src = tmp_path / "src"
-        tests = tmp_path / "tests"
-        docs = tmp_path / "docs"
-        src.mkdir()
-        tests.mkdir()
-        docs.mkdir()
-        (tmp_path / "pyproject.toml").write_text(
-            "[project]\n"
-            'name = "myproject"\n\n'
-            "[tool.mypy]\n"
-            "strict = true\n"
-        )
-        (tmp_path / "setup.cfg").write_text(
-            "[metadata]\nname = myproject\n"
-        )
-        (src / "main.py").touch()
-        (tests / "test_main.py").touch()
-        (docs / "README.md").touch()
-        result = run_cli("--linters", "mypy", str(tmp_path))
-        assert "mypy" in result.stdout
+        assert "mypy" in complex_project_result.stdout
 
     def test_complex_project_structure_reports_one(
-        self, tmp_path: Path
+        self,
+        complex_project_result: subprocess.CompletedProcess[str],
     ) -> None:
         """Complex project reports exactly one finding."""
-        src = tmp_path / "src"
-        tests = tmp_path / "tests"
-        docs = tmp_path / "docs"
-        src.mkdir()
-        tests.mkdir()
-        docs.mkdir()
-        (tmp_path / "pyproject.toml").write_text(
-            "[project]\n"
-            'name = "myproject"\n\n'
-            "[tool.mypy]\n"
-            "strict = true\n"
-        )
-        (tmp_path / "setup.cfg").write_text(
-            "[metadata]\nname = myproject\n"
-        )
-        (src / "main.py").touch()
-        (tests / "test_main.py").touch()
-        (docs / "README.md").touch()
-        result = run_cli("--linters", "mypy", str(tmp_path))
-        lines = result.stdout.strip().split("\n")
+        lines = complex_project_result.stdout.strip().split("\n")
         assert len(lines) == 1
 
     def test_output_paths_are_relative(

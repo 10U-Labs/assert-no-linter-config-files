@@ -1,6 +1,7 @@
 """End-to-end tests for CLI flags."""
 
 import json
+import subprocess
 from pathlib import Path
 from test.e2e.conftest import run_cli
 
@@ -161,60 +162,42 @@ class TestExcludeFlag:
         )
         assert "cache" not in result.stdout
 
-    def test_exclude_repeated_exits_1(
+    @pytest.fixture
+    def exclude_repeated_result(
         self, tmp_path: Path
+    ) -> subprocess.CompletedProcess[str]:
+        """Run CLI with multiple --exclude on vendor/node_modules/venv."""
+        for name in ["vendor", "node_modules", "venv"]:
+            subdir = tmp_path / name
+            subdir.mkdir()
+            (subdir / ".pylintrc").touch()
+        (tmp_path / "mypy.ini").touch()
+        return run_cli(
+            "--linters", "pylint,mypy",
+            "--exclude", "*vendor*",
+            "--exclude", "*node_modules*",
+            "--exclude", "*venv*",
+            str(tmp_path),
+        )
+
+    def test_exclude_repeated_exits_1(
+        self, exclude_repeated_result: subprocess.CompletedProcess[str]
     ) -> None:
         """--exclude used multiple times exits 1."""
-        for name in ["vendor", "node_modules", "venv"]:
-            subdir = tmp_path / name
-            subdir.mkdir()
-            (subdir / ".pylintrc").touch()
-        (tmp_path / "mypy.ini").touch()
-        result = run_cli(
-            "--linters", "pylint,mypy",
-            "--exclude", "*vendor*",
-            "--exclude", "*node_modules*",
-            "--exclude", "*venv*",
-            str(tmp_path),
-        )
-        assert result.returncode == 1
+        assert exclude_repeated_result.returncode == 1
 
     def test_exclude_repeated_reports_one_finding(
-        self, tmp_path: Path
+        self, exclude_repeated_result: subprocess.CompletedProcess[str]
     ) -> None:
         """--exclude used multiple times leaves one finding."""
-        for name in ["vendor", "node_modules", "venv"]:
-            subdir = tmp_path / name
-            subdir.mkdir()
-            (subdir / ".pylintrc").touch()
-        (tmp_path / "mypy.ini").touch()
-        result = run_cli(
-            "--linters", "pylint,mypy",
-            "--exclude", "*vendor*",
-            "--exclude", "*node_modules*",
-            "--exclude", "*venv*",
-            str(tmp_path),
-        )
-        lines = result.stdout.strip().split("\n")
+        lines = exclude_repeated_result.stdout.strip().split("\n")
         assert len(lines) == 1
 
     def test_exclude_repeated_reports_mypy(
-        self, tmp_path: Path
+        self, exclude_repeated_result: subprocess.CompletedProcess[str]
     ) -> None:
         """--exclude used multiple times reports mypy."""
-        for name in ["vendor", "node_modules", "venv"]:
-            subdir = tmp_path / name
-            subdir.mkdir()
-            (subdir / ".pylintrc").touch()
-        (tmp_path / "mypy.ini").touch()
-        result = run_cli(
-            "--linters", "pylint,mypy",
-            "--exclude", "*vendor*",
-            "--exclude", "*node_modules*",
-            "--exclude", "*venv*",
-            str(tmp_path),
-        )
-        assert "mypy" in result.stdout
+        assert "mypy" in exclude_repeated_result.stdout
 
 
 @pytest.mark.e2e

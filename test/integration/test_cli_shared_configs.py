@@ -42,38 +42,35 @@ class TestSetupCfgSections:
         ])
         assert "mypy section" in stdout
 
-    def test_tool_pytest_section_exits_1(
+    @pytest.fixture
+    def setup_cfg_tool_pytest_result(
         self, tmp_path: Path, run_main_with_args
+    ) -> tuple[int, str, str]:
+        """Run CLI after writing [tool:pytest] to setup.cfg."""
+        (tmp_path / "setup.cfg").write_text(
+            "[tool:pytest]\naddopts = -v\n"
+        )
+        return run_main_with_args([
+            "--linters", "pytest", str(tmp_path)
+        ])
+
+    def test_tool_pytest_section_exits_1(
+        self, setup_cfg_tool_pytest_result: tuple[int, str, str]
     ) -> None:
         """Exit 1 when [tool:pytest] section found in setup.cfg."""
-        content = "[tool:pytest]\naddopts = -v\n"
-        (tmp_path / "setup.cfg").write_text(content)
-        code, _, _ = run_main_with_args([
-            "--linters", "pytest", str(tmp_path)
-        ])
-        assert code == 1
+        assert setup_cfg_tool_pytest_result[0] == 1
 
     def test_tool_pytest_section_outputs_pytest(
-        self, tmp_path: Path, run_main_with_args
+        self, setup_cfg_tool_pytest_result: tuple[int, str, str]
     ) -> None:
         """Output contains pytest when [tool:pytest] found."""
-        content = "[tool:pytest]\naddopts = -v\n"
-        (tmp_path / "setup.cfg").write_text(content)
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pytest", str(tmp_path)
-        ])
-        assert "pytest" in stdout
+        assert "pytest" in setup_cfg_tool_pytest_result[1]
 
     def test_tool_pytest_section_outputs_section_name(
-        self, tmp_path: Path, run_main_with_args
+        self, setup_cfg_tool_pytest_result: tuple[int, str, str]
     ) -> None:
         """Output contains 'tool:pytest' when section found."""
-        content = "[tool:pytest]\naddopts = -v\n"
-        (tmp_path / "setup.cfg").write_text(content)
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pytest", str(tmp_path)
-        ])
-        assert "tool:pytest" in stdout
+        assert "tool:pytest" in setup_cfg_tool_pytest_result[1]
 
     def test_pylint_section_exits_1(
         self, tmp_path: Path, run_main_with_args
@@ -124,27 +121,29 @@ class TestToxIniSections:
         ])
         assert "pytest" in stdout
 
-    def test_tool_pytest_section_exits_1(
+    @pytest.fixture
+    def tox_ini_tool_pytest_result(
         self, tmp_path: Path, run_main_with_args
+    ) -> tuple[int, str, str]:
+        """Run CLI after writing [tool:pytest] to tox.ini."""
+        (tmp_path / "tox.ini").write_text(
+            "[tool:pytest]\naddopts = -v\n"
+        )
+        return run_main_with_args([
+            "--linters", "pytest", str(tmp_path)
+        ])
+
+    def test_tool_pytest_section_exits_1(
+        self, tox_ini_tool_pytest_result: tuple[int, str, str]
     ) -> None:
         """Exit 1 when [tool:pytest] section found in tox.ini."""
-        content = "[tool:pytest]\naddopts = -v\n"
-        (tmp_path / "tox.ini").write_text(content)
-        code, _, _ = run_main_with_args([
-            "--linters", "pytest", str(tmp_path)
-        ])
-        assert code == 1
+        assert tox_ini_tool_pytest_result[0] == 1
 
     def test_tool_pytest_section_outputs_pytest(
-        self, tmp_path: Path, run_main_with_args
+        self, tox_ini_tool_pytest_result: tuple[int, str, str]
     ) -> None:
         """Output contains pytest when [tool:pytest] found."""
-        content = "[tool:pytest]\naddopts = -v\n"
-        (tmp_path / "tox.ini").write_text(content)
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pytest", str(tmp_path)
-        ])
-        assert "pytest" in stdout
+        assert "pytest" in tox_ini_tool_pytest_result[1]
 
     def test_mypy_section_exits_1(
         self, tmp_path: Path, run_main_with_args
