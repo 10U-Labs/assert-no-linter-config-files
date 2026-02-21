@@ -172,26 +172,24 @@ class TestVerboseSummary:
         assert "found 0 finding(s)" in stdout
 
     def test_verbose_with_fail_fast_exits_1(
-        self, tmp_path: Path, run_main_with_args
+        self, tmp_path_with_pylintrc_and_mypy: Path, run_main_with_args
     ) -> None:
         """--verbose with --fail-fast exits 1."""
-        (tmp_path / ".pylintrc").touch()
-        (tmp_path / "mypy.ini").touch()
         code, _, _ = run_main_with_args([
             "--linters", "pylint,mypy",
-            "--verbose", "--fail-fast", str(tmp_path)
+            "--verbose", "--fail-fast",
+            str(tmp_path_with_pylintrc_and_mypy)
         ])
         assert code == 1
 
     def test_verbose_with_fail_fast_shows_1_finding(
-        self, tmp_path: Path, run_main_with_args
+        self, tmp_path_with_pylintrc_and_mypy: Path, run_main_with_args
     ) -> None:
         """--verbose with --fail-fast shows summary with 1 finding."""
-        (tmp_path / ".pylintrc").touch()
-        (tmp_path / "mypy.ini").touch()
         _, stdout, _ = run_main_with_args([
             "--linters", "pylint,mypy",
-            "--verbose", "--fail-fast", str(tmp_path)
+            "--verbose", "--fail-fast",
+            str(tmp_path_with_pylintrc_and_mypy)
         ])
         assert "found 1 finding" in stdout
 

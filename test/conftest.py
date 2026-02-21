@@ -95,6 +95,14 @@ def verbose_pylint_result(
 
 
 @pytest.fixture
+def tmp_path_with_pylintrc_and_mypy(tmp_path: Path) -> Path:
+    """Create a tmp_path with .pylintrc and mypy.ini files."""
+    (tmp_path / ".pylintrc").touch()
+    (tmp_path / "mypy.ini").touch()
+    return tmp_path
+
+
+@pytest.fixture
 def file_instead_of_directory_result(
     tmp_path: Path,
 ) -> tuple[int, str, str]:

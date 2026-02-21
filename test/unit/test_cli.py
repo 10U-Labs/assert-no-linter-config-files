@@ -327,32 +327,26 @@ class TestOSErrorHandling:
 
 @pytest.mark.unit
 def test_quiet_and_fail_fast_exits_1(
-    tmp_path: Path, run_main_with_args
+    tmp_path_with_pylintrc_and_mypy: Path, run_main_with_args
 ) -> None:
     """--quiet with --fail-fast exits with code 1."""
-    (tmp_path / ".pylintrc").touch()
-    (tmp_path / "mypy.ini").touch()
     code, _, _ = run_main_with_args([
         "--linters", "pylint,mypy",
-        "--quiet",
-        "--fail-fast",
-        str(tmp_path)
+        "--quiet", "--fail-fast",
+        str(tmp_path_with_pylintrc_and_mypy)
     ])
     assert code == 1
 
 
 @pytest.mark.unit
 def test_quiet_and_fail_fast_no_output(
-    tmp_path: Path, run_main_with_args
+    tmp_path_with_pylintrc_and_mypy: Path, run_main_with_args
 ) -> None:
     """--quiet with --fail-fast produces no stdout output."""
-    (tmp_path / ".pylintrc").touch()
-    (tmp_path / "mypy.ini").touch()
     _, stdout, _ = run_main_with_args([
         "--linters", "pylint,mypy",
-        "--quiet",
-        "--fail-fast",
-        str(tmp_path)
+        "--quiet", "--fail-fast",
+        str(tmp_path_with_pylintrc_and_mypy)
     ])
     assert stdout == ""
 
