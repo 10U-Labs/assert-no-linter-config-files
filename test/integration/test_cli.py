@@ -1299,15 +1299,13 @@ class TestModuleEntryPoint:
 
     def test_main_module_runpy(self, tmp_path: Path) -> None:
         """Test __main__ module via runpy (in-process execution)."""
-        exc_info = None
         with patch.object(sys, "argv", [
             "assert_no_linter_config_files",
             "--linters", "pylint", str(tmp_path)
         ]):
-            with pytest.raises(SystemExit) as exc_info:
+            with pytest.raises(SystemExit, match="0"):
                 runpy.run_module(
                     "assert_no_linter_config_files",
                     run_name="__main__",
                     alter_sys=True
                 )
-        assert exc_info.value.code == 0

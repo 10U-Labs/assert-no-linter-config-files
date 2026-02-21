@@ -60,13 +60,13 @@ def test_print_verbose_summary_shows_finding_count(capsys: pytest.CaptureFixture
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("verbose,quiet,expected_calls", [
-    (True, False, 2),   # verbose: prints finding + summary
-    (False, True, 0),   # quiet: no output
-    (False, False, 1),  # normal: prints finding
+@pytest.mark.parametrize("verbose,quiet", [
+    (True, False),
+    (False, True),
+    (False, False),
 ])
 def test_handle_fail_fast_exits_with_findings_code(
-    verbose: bool, quiet: bool, expected_calls: int
+    verbose: bool, quiet: bool
 ) -> None:
     """Test fail-fast exits with EXIT_FINDINGS code."""
     args = argparse.Namespace(
@@ -74,21 +74,19 @@ def test_handle_fail_fast_exits_with_findings_code(
     )
     finding = Finding("test.py", "pylint", "config file")
     with patch("builtins.print"):
-        with pytest.raises(SystemExit) as exc_info:
+        with pytest.raises(SystemExit, match=str(EXIT_FINDINGS)):
             _handle_fail_fast(finding, 1, args)
-        assert exc_info.value.code == EXIT_FINDINGS
 
 
 @pytest.mark.unit
 @pytest.mark.parametrize("verbose,quiet,expected_calls", [
     (True, False, 2),   # verbose: prints finding + summary
-    (False, True, 0),   # quiet: no output
     (False, False, 1),  # normal: prints finding
 ])
-def test_handle_fail_fast_output_modes(
+def test_handle_fail_fast_prints_output(
     verbose: bool, quiet: bool, expected_calls: int
 ) -> None:
-    """Test different output modes for fail-fast."""
+    """Test fail-fast prints expected output in non-quiet modes."""
     args = argparse.Namespace(
         verbose=verbose, quiet=quiet, json=False, count=False
     )
@@ -96,10 +94,20 @@ def test_handle_fail_fast_output_modes(
     with patch("builtins.print") as mock_print:
         with pytest.raises(SystemExit):
             _handle_fail_fast(finding, 1, args)
-        if expected_calls == 0:
-            mock_print.assert_not_called()
-        else:
-            assert mock_print.call_count >= expected_calls
+    assert mock_print.call_count >= expected_calls
+
+
+@pytest.mark.unit
+def test_handle_fail_fast_quiet_no_output() -> None:
+    """Test fail-fast in quiet mode produces no output."""
+    args = argparse.Namespace(
+        verbose=False, quiet=True, json=False, count=False
+    )
+    finding = Finding("test.py", "pylint", "config file")
+    with patch("builtins.print") as mock_print:
+        with pytest.raises(SystemExit):
+            _handle_fail_fast(finding, 1, args)
+    mock_print.assert_not_called()
 
 
 @pytest.mark.unit
