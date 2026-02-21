@@ -62,6 +62,28 @@ class TestDedicatedConfigFilesMapping:
         """Yamllint config file maps to yamllint."""
         assert DEDICATED_CONFIG_FILES[filename] == "yamllint"
 
+    def test_markdownlint_has_five_dedicated_files(self) -> None:
+        """There are exactly five markdownlint dedicated config files."""
+        markdownlint_count = sum(
+            1 for tool in DEDICATED_CONFIG_FILES.values()
+            if tool == "markdownlint"
+        )
+        assert markdownlint_count == 5
+
+    @pytest.mark.parametrize(
+        "filename",
+        [
+            f
+            for f in DEDICATED_CONFIG_FILES
+            if "markdownlint" in f
+        ],
+    )
+    def test_markdownlint_filename_maps_to_markdownlint(
+        self, filename: str
+    ) -> None:
+        """Markdownlint config file maps to markdownlint."""
+        assert DEDICATED_CONFIG_FILES[filename] == "markdownlint"
+
     def test_jscpd_has_eight_dedicated_files(self) -> None:
         """There are exactly eight jscpd dedicated config files."""
         jscpd_count = sum(
@@ -196,6 +218,53 @@ class TestGetConfigFilesForLinters:
         """Each valid linter returns non-empty config list."""
         result = get_config_files_for_linters(VALID_LINTERS)
         assert len(result[linter]) > 0
+
+
+@pytest.mark.unit
+class TestGetConfigFilesForMarkdownlint:
+    """Tests for get_config_files_for_linters with markdownlint."""
+
+    def test_markdownlint_contains_key(self) -> None:
+        """Markdownlint result contains markdownlint key."""
+        result = get_config_files_for_linters(
+            frozenset({"markdownlint"})
+        )
+        assert "markdownlint" in result
+
+    def test_markdownlint_contains_json(self) -> None:
+        """Markdownlint result contains .markdownlint.json."""
+        result = get_config_files_for_linters(
+            frozenset({"markdownlint"})
+        )
+        assert ".markdownlint.json" in result["markdownlint"]
+
+    def test_markdownlint_contains_jsonc(self) -> None:
+        """Markdownlint result contains .markdownlint.jsonc."""
+        result = get_config_files_for_linters(
+            frozenset({"markdownlint"})
+        )
+        assert ".markdownlint.jsonc" in result["markdownlint"]
+
+    def test_markdownlint_contains_yml(self) -> None:
+        """Markdownlint result contains .markdownlint.yml."""
+        result = get_config_files_for_linters(
+            frozenset({"markdownlint"})
+        )
+        assert ".markdownlint.yml" in result["markdownlint"]
+
+    def test_markdownlint_contains_yaml(self) -> None:
+        """Markdownlint result contains .markdownlint.yaml."""
+        result = get_config_files_for_linters(
+            frozenset({"markdownlint"})
+        )
+        assert ".markdownlint.yaml" in result["markdownlint"]
+
+    def test_markdownlint_contains_rc(self) -> None:
+        """Markdownlint result contains .markdownlintrc."""
+        result = get_config_files_for_linters(
+            frozenset({"markdownlint"})
+        )
+        assert ".markdownlintrc" in result["markdownlint"]
 
 
 @pytest.mark.unit

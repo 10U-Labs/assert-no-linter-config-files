@@ -308,6 +308,55 @@ class TestEndToEndConfigDetection:
         assert "pytest" in result.stdout
 
     @pytest.fixture
+    def markdownlint_all_configs_result(
+        self, tmp_path: Path
+    ) -> subprocess.CompletedProcess[str]:
+        """Run CLI on dir with all markdownlint config variants."""
+        mdl_files = [
+            ".markdownlint.json", ".markdownlint.jsonc",
+            ".markdownlint.yaml", ".markdownlint.yml",
+            ".markdownlintrc",
+        ]
+        for i, filename in enumerate(mdl_files):
+            subdir = tmp_path / f"dir{i}"
+            subdir.mkdir()
+            (subdir / filename).touch()
+        return run_cli("--linters", "markdownlint", str(tmp_path))
+
+    def test_all_markdownlint_config_files_exits_1(
+        self,
+        markdownlint_all_configs_result: subprocess.CompletedProcess[
+            str
+        ],
+    ) -> None:
+        """All markdownlint config file variants cause exit 1."""
+        assert markdownlint_all_configs_result.returncode == 1
+
+    def test_all_markdownlint_config_files_reports_five(
+        self,
+        markdownlint_all_configs_result: subprocess.CompletedProcess[
+            str
+        ],
+    ) -> None:
+        """All markdownlint config file variants produce five lines."""
+        lines = (
+            markdownlint_all_configs_result.stdout.strip().split("\n")
+        )
+        assert len(lines) == 5
+
+    def test_all_markdownlint_config_files_all_reference(
+        self,
+        markdownlint_all_configs_result: subprocess.CompletedProcess[
+            str
+        ],
+    ) -> None:
+        """All markdownlint output lines reference markdownlint."""
+        lines = (
+            markdownlint_all_configs_result.stdout.strip().split("\n")
+        )
+        assert all("markdownlint" in line for line in lines)
+
+    @pytest.fixture
     def jscpd_all_configs_result(
         self, tmp_path: Path
     ) -> subprocess.CompletedProcess[str]:

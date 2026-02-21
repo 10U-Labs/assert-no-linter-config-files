@@ -39,6 +39,11 @@ class TestDedicatedConfigFiles:
             ".jscpdrc.json",
             ".jscpdrc.yml",
             ".jscpdrc.yaml",
+            ".markdownlint.json",
+            ".markdownlint.jsonc",
+            ".markdownlint.yaml",
+            ".markdownlint.yml",
+            ".markdownlintrc",
         ],
     )
     def test_dedicated_config_file_returns_one_finding(
@@ -69,6 +74,11 @@ class TestDedicatedConfigFiles:
             (".jscpdrc.json", "jscpd"),
             (".jscpdrc.yml", "jscpd"),
             (".jscpdrc.yaml", "jscpd"),
+            (".markdownlint.json", "markdownlint"),
+            (".markdownlint.jsonc", "markdownlint"),
+            (".markdownlint.yaml", "markdownlint"),
+            (".markdownlint.yml", "markdownlint"),
+            (".markdownlintrc", "markdownlint"),
         ],
     )
     def test_dedicated_config_file_has_correct_tool(
@@ -99,6 +109,11 @@ class TestDedicatedConfigFiles:
             ".jscpdrc.json",
             ".jscpdrc.yml",
             ".jscpdrc.yaml",
+            ".markdownlint.json",
+            ".markdownlint.jsonc",
+            ".markdownlint.yaml",
+            ".markdownlint.yml",
+            ".markdownlintrc",
         ],
     )
     def test_dedicated_config_file_has_config_file_reason(

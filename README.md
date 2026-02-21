@@ -13,7 +13,7 @@ assert-no-linter-config-files --linters LINTERS [OPTIONS] DIRECTORY [DIRECTORY .
 
 ### Required Arguments
 
-- `--linters LINTERS` - Comma-separated linters to check: `jscpd,mypy,pylint,pytest,yamllint`
+- `--linters LINTERS` - Comma-separated linters to check: `jscpd,markdownlint,mypy,pylint,pytest,yamllint`
 - `DIRECTORY` - One or more directories to scan
 
 ### Optional Arguments
@@ -78,6 +78,9 @@ The tool flags the presence of these files anywhere in the scanned tree:
 
 **jscpd:** `.jscpd.json`, `.jscpd.yml`, `.jscpd.yaml`, `.jscpd.toml`,
 `.jscpdrc`, `.jscpdrc.json`, `.jscpdrc.yml`, `.jscpdrc.yaml`
+
+**markdownlint:** `.markdownlint.json`, `.markdownlint.jsonc`,
+`.markdownlint.yaml`, `.markdownlint.yml`, `.markdownlintrc`
 
 **mypy:** `mypy.ini`, `.mypy.ini`
 
