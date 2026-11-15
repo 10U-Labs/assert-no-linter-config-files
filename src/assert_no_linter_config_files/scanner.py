@@ -4,8 +4,10 @@ import configparser
 import fnmatch
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 try:
     import tomllib
@@ -14,7 +16,8 @@ except ImportError:
     HAS_TOMLLIB = False
 
 VALID_LINTERS: frozenset[str] = frozenset({
-    "pylint", "pytest", "mypy", "yamllint", "jscpd", "markdownlint"
+    "pylint", "pytest", "mypy", "yamllint", "jscpd", "markdownlint",
+    "clippy", "rustc", "rustdoc", "rustfmt",
 })
 
 DEDICATED_CONFIG_FILES: dict[str, str] = {
@@ -40,7 +43,20 @@ DEDICATED_CONFIG_FILES: dict[str, str] = {
     ".markdownlint.yaml": "markdownlint",
     ".markdownlint.yml": "markdownlint",
     ".markdownlintrc": "markdownlint",
+    "rustfmt.toml": "rustfmt",
+    ".rustfmt.toml": "rustfmt",
+    "clippy.toml": "clippy",
+    ".clippy.toml": "clippy",
 }
+
+# Sub-tables of a Cargo.toml [lints] or [workspace.lints] table, by tool.
+CARGO_LINT_TABLES: dict[str, str] = {
+    "clippy": "clippy",
+    "rust": "rustc",
+    "rustdoc": "rustdoc",
+}
+
+CARGO_LINTS_PREFIXES: tuple[str, ...] = ("lints", "workspace.lints")
 
 SHARED_CONFIG_SECTIONS: dict[str, dict[str, str]] = {
     "pylint": {
@@ -63,6 +79,15 @@ SHARED_CONFIG_SECTIONS: dict[str, dict[str, str]] = {
     },
     "jscpd": {
         "pyproject.toml": "[tool.jscpd.*]",
+    },
+    "clippy": {
+        "Cargo.toml": "[lints.clippy] or [workspace.lints.clippy]",
+    },
+    "rustc": {
+        "Cargo.toml": "[lints.rust] or [workspace.lints.rust]",
+    },
+    "rustdoc": {
+        "Cargo.toml": "[lints.rustdoc] or [workspace.lints.rustdoc]",
     },
 }
 
@@ -198,19 +223,79 @@ def _check_pyproject_with_regex(path_str: str, content: str) -> list[Finding]:
     return findings
 
 
-def check_pyproject_toml(path: Path, content: str) -> list[Finding]:
-    """Check pyproject.toml for tool-specific sections."""
+def _check_toml(
+    path: Path,
+    content: str,
+    with_tomllib: Callable[[str, dict[str, Any]], list[Finding]],
+    with_regex: Callable[[str, str], list[Finding]],
+) -> list[Finding]:
+    """Check TOML content with tomllib, falling back to regex."""
     path_str = str(path)
 
     if HAS_TOMLLIB:
         try:
-            data = tomllib.loads(content)
-            tool_section = data.get("tool", {})
-            return _check_pyproject_with_tomllib(path_str, tool_section)
-        except (tomllib.TOMLDecodeError, ValueError, KeyError, TypeError):
+            return with_tomllib(path_str, tomllib.loads(content))
+        except (
+            tomllib.TOMLDecodeError, ValueError, KeyError, TypeError,
+            AttributeError,
+        ):
             pass
 
-    return _check_pyproject_with_regex(path_str, content)
+    return with_regex(path_str, content)
+
+
+def check_pyproject_toml(path: Path, content: str) -> list[Finding]:
+    """Check pyproject.toml for tool-specific sections."""
+    return _check_toml(
+        path,
+        content,
+        lambda path_str, data: _check_pyproject_with_tomllib(
+            path_str, data.get("tool", {})
+        ),
+        _check_pyproject_with_regex,
+    )
+
+
+def _check_cargo_with_tomllib(
+    path_str: str, data: dict[str, Any]
+) -> list[Finding]:
+    """Check [lints] and [workspace.lints] using parsed TOML data."""
+    findings: list[Finding] = []
+    lints_tables = (
+        data.get("lints", {}),
+        data.get("workspace", {}).get("lints", {}),
+    )
+    for prefix, lints in zip(CARGO_LINTS_PREFIXES, lints_tables):
+        for table, tool in CARGO_LINT_TABLES.items():
+            if table in lints:
+                findings.append(
+                    Finding(path_str, tool, f"{prefix}.{table} section")
+                )
+    return findings
+
+
+def _check_cargo_with_regex(path_str: str, content: str) -> list[Finding]:
+    """Check Cargo.toml content using regex fallback."""
+    findings: list[Finding] = []
+    for prefix in CARGO_LINTS_PREFIXES:
+        for table, tool in CARGO_LINT_TABLES.items():
+            pattern = rf"^\[{re.escape(prefix)}\.{table}\b"
+            if re.search(pattern, content, re.MULTILINE):
+                findings.append(
+                    Finding(path_str, tool, f"{prefix}.{table} section")
+                )
+    return findings
+
+
+def check_cargo_toml(path: Path, content: str) -> list[Finding]:
+    """Check Cargo.toml for [lints] and [workspace.lints] sub-tables.
+
+    A [lints] table that holds only ``workspace = true`` sets no level
+    itself, so it gives no finding.
+    """
+    return _check_toml(
+        path, content, _check_cargo_with_tomllib, _check_cargo_with_regex
+    )
 
 
 def check_setup_cfg(path: Path, content: str) -> list[Finding]:
@@ -260,10 +345,13 @@ def check_tox_ini(path: Path, content: str) -> list[Finding]:
 def _process_shared_config_file(
     file_path: Path, filename: str
 ) -> list[Finding]:
-    """Process shared config files (pyproject.toml, setup.cfg, tox.ini)."""
+    """Process shared config files (pyproject.toml, setup.cfg, tox.ini,
+    Cargo.toml)."""
     content = file_path.read_text(encoding="utf-8")
     if filename == "pyproject.toml":
         return check_pyproject_toml(file_path, content)
+    if filename == "Cargo.toml":
+        return check_cargo_toml(file_path, content)
     if filename == "setup.cfg":
         return check_setup_cfg(file_path, content)
     # filename == "tox.ini"
@@ -299,7 +387,9 @@ def scan_directory(
         exclude_patterns = []
 
     findings: list[Finding] = []
-    shared_config_files = {"pyproject.toml", "setup.cfg", "tox.ini"}
+    shared_config_files = {
+        "pyproject.toml", "setup.cfg", "tox.ini", "Cargo.toml"
+    }
 
     for root, dirs, files in os.walk(directory):
         if ".git" in dirs:

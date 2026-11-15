@@ -13,7 +13,8 @@ assert-no-linter-config-files --linters LINTERS [OPTIONS] DIRECTORY [DIRECTORY .
 
 ### Required Arguments
 
-- `--linters LINTERS` - Comma-separated linters to check: `jscpd,markdownlint,mypy,pylint,pytest,yamllint`
+- `--linters LINTERS` - Comma-separated linters to check:
+  `clippy,jscpd,markdownlint,mypy,pylint,pytest,rustc,rustdoc,rustfmt,yamllint`
 - `DIRECTORY` - One or more directories to scan
 
 ### Optional Arguments
@@ -51,6 +52,15 @@ Check all linters:
 assert-no-linter-config-files --linters pylint,mypy,pytest,yamllint,jscpd .
 ```
 
+Check the Rust tools, allowing `[lints]` tables in any `Cargo.toml` (the
+first pattern covers the top-level manifest when scanning `.`, whose path has
+no directory part):
+
+```bash
+assert-no-linter-config-files --linters clippy,rustfmt \
+  --exclude "Cargo.toml" --exclude "*/Cargo.toml" .
+```
+
 Exclude vendor directories:
 
 ```bash
@@ -76,6 +86,8 @@ assert-no-linter-config-files --linters pylint,mypy . || exit 1
 
 The tool flags the presence of these files anywhere in the scanned tree:
 
+**clippy:** `clippy.toml`, `.clippy.toml`
+
 **jscpd:** `.jscpd.json`, `.jscpd.yml`, `.jscpd.yaml`, `.jscpd.toml`,
 `.jscpdrc`, `.jscpdrc.json`, `.jscpdrc.yml`, `.jscpdrc.yaml`
 
@@ -87,6 +99,8 @@ The tool flags the presence of these files anywhere in the scanned tree:
 **pylint:** `.pylintrc`, `pylintrc`, `.pylintrc.toml`
 
 **pytest:** `pytest.ini`
+
+**rustfmt:** `rustfmt.toml`, `.rustfmt.toml`
 
 **yamllint:** `.yamllint`, `.yamllint.yml`, `.yamllint.yaml`
 
@@ -113,6 +127,15 @@ The tool also checks shared config files for tool-specific sections:
 - `[mypy]`
 - Any section containing "pylint"
 - `[pytest]` or `[tool:pytest]`
+
+**Cargo.toml:**
+
+- `[lints.clippy]` or `[workspace.lints.clippy]` (clippy)
+- `[lints.rust]` or `[workspace.lints.rust]` (rustc)
+- `[lints.rustdoc]` or `[workspace.lints.rustdoc]` (rustdoc)
+
+A `[lints]` table that holds only `workspace = true` is not flagged; the
+`[workspace.lints]` table it points to is.
 
 ## Output Format
 

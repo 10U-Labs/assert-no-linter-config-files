@@ -273,7 +273,7 @@ class TestSharedConfigSectionsMapping:
 
     @pytest.mark.parametrize(
         "linter",
-        list(SHARED_CONFIG_SECTIONS.keys()),
+        ["jscpd", "mypy", "pylint", "pytest", "yamllint"],
     )
     def test_linter_has_pyproject_section(self, linter: str) -> None:
         """Linter in SHARED_CONFIG_SECTIONS has pyproject.toml."""

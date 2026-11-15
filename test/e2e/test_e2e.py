@@ -544,3 +544,39 @@ class TestEndToEndDirectories:
             "project/.pylintrc" in result.stdout
             or "project\\.pylintrc" in result.stdout
         )
+
+
+@pytest.mark.e2e
+class TestEndToEndRust:
+    """End-to-end tests for Rust tool configuration."""
+
+    @pytest.fixture
+    def rust_result(
+        self, tmp_path: Path
+    ) -> subprocess.CompletedProcess[str]:
+        """Run CLI on dir with a rustfmt.toml and a [lints.clippy] table."""
+        (tmp_path / "rustfmt.toml").write_text("max_width = 120\n")
+        (tmp_path / "Cargo.toml").write_text(
+            "[package]\n"
+            'name = "sample"\n\n'
+            "[lints.clippy]\n"
+            'pedantic = "allow"\n'
+        )
+        return run_cli("--linters", "clippy,rustfmt", str(tmp_path))
+
+    def test_rust_configs_exit_1(
+        self, rust_result: subprocess.CompletedProcess[str]
+    ) -> None:
+        """A rustfmt.toml and a [lints.clippy] table cause exit 1."""
+        assert rust_result.returncode == 1
+
+    def test_rust_configs_report_both_tools(
+        self, rust_result: subprocess.CompletedProcess[str]
+    ) -> None:
+        """Both the rustfmt file and the clippy table are reported."""
+        lines = rust_result.stdout.strip().split("\n")
+        reasons = {tuple(line.split(":")[1:]) for line in lines}
+        assert reasons == {
+            ("rustfmt", "config file"),
+            ("clippy", "lints.clippy section"),
+        }

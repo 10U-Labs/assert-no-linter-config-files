@@ -22,7 +22,8 @@ inputs:
   linters:
     description: >-
       Comma-separated list of linters
-      (jscpd,markdownlint,mypy,pylint,pytest,yamllint)
+      (clippy,jscpd,markdownlint,mypy,pylint,pytest,rustc,rustdoc,
+      rustfmt,yamllint)
     required: true
   quiet:
     default: "false"

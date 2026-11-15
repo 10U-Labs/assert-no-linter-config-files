@@ -56,6 +56,10 @@ class TestDedicatedConfigFiles:
             (".markdownlint.yaml", "markdownlint"),
             (".markdownlint.yml", "markdownlint"),
             (".markdownlintrc", "markdownlint"),
+            ("rustfmt.toml", "rustfmt"),
+            (".rustfmt.toml", "rustfmt"),
+            ("clippy.toml", "clippy"),
+            (".clippy.toml", "clippy"),
         ],
     )
     def test_dedicated_config_file_has_correct_tool(
