@@ -10,7 +10,7 @@ from pathlib import Path
 try:
     import tomllib
     HAS_TOMLLIB = True
-except ImportError:  # pragma: no cover (Python < 3.11)
+except ImportError:
     HAS_TOMLLIB = False
 
 VALID_LINTERS: frozenset[str] = frozenset({

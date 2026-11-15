@@ -20,7 +20,9 @@ inputs:
     description: Output findings as JSON
     required: false
   linters:
-    description: Comma-separated list of linters (jscpd,mypy,pylint,pytest,yamllint)
+    description: >-
+      Comma-separated list of linters
+      (jscpd,markdownlint,mypy,pylint,pytest,yamllint)
     required: true
   quiet:
     default: "false"

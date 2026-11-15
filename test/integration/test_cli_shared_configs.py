@@ -72,27 +72,29 @@ class TestSetupCfgSections:
         """Output contains 'tool:pytest' when section found."""
         assert "tool:pytest" in setup_cfg_tool_pytest_result[1]
 
-    def test_pylint_section_exits_1(
+    @pytest.fixture
+    def setup_cfg_pylint_result(
         self, tmp_path: Path, run_main_with_args
+    ) -> tuple[int, str, str]:
+        """Run CLI after writing a pylint section to setup.cfg."""
+        (tmp_path / "setup.cfg").write_text(
+            "[pylint.messages_control]\ndisable = C0114\n"
+        )
+        return run_main_with_args([
+            "--linters", "pylint", str(tmp_path)
+        ])
+
+    def test_pylint_section_exits_1(
+        self, setup_cfg_pylint_result: tuple[int, str, str]
     ) -> None:
         """Exit 1 when pylint section found in setup.cfg."""
-        content = "[pylint.messages_control]\ndisable = C0114\n"
-        (tmp_path / "setup.cfg").write_text(content)
-        code, _, _ = run_main_with_args([
-            "--linters", "pylint", str(tmp_path)
-        ])
-        assert code == 1
+        assert setup_cfg_pylint_result[0] == 1
 
     def test_pylint_section_outputs_pylint(
-        self, tmp_path: Path, run_main_with_args
+        self, setup_cfg_pylint_result: tuple[int, str, str]
     ) -> None:
         """Output contains pylint when pylint section found."""
-        content = "[pylint.messages_control]\ndisable = C0114\n"
-        (tmp_path / "setup.cfg").write_text(content)
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint", str(tmp_path)
-        ])
-        assert "pylint" in stdout
+        assert "pylint" in setup_cfg_pylint_result[1]
 
 
 @pytest.mark.integration
@@ -167,27 +169,29 @@ class TestToxIniSections:
         ])
         assert "mypy" in stdout
 
-    def test_pylint_section_exits_1(
+    @pytest.fixture
+    def tox_ini_pylint_result(
         self, tmp_path: Path, run_main_with_args
+    ) -> tuple[int, str, str]:
+        """Run CLI after writing a pylint section to tox.ini."""
+        (tmp_path / "tox.ini").write_text(
+            "[pylint]\ndisable = C0114\n"
+        )
+        return run_main_with_args([
+            "--linters", "pylint", str(tmp_path)
+        ])
+
+    def test_pylint_section_exits_1(
+        self, tox_ini_pylint_result: tuple[int, str, str]
     ) -> None:
         """Exit 1 when pylint section found in tox.ini."""
-        content = "[pylint]\ndisable = C0114\n"
-        (tmp_path / "tox.ini").write_text(content)
-        code, _, _ = run_main_with_args([
-            "--linters", "pylint", str(tmp_path)
-        ])
-        assert code == 1
+        assert tox_ini_pylint_result[0] == 1
 
     def test_pylint_section_outputs_pylint(
-        self, tmp_path: Path, run_main_with_args
+        self, tox_ini_pylint_result: tuple[int, str, str]
     ) -> None:
         """Output contains pylint when pylint section found."""
-        content = "[pylint]\ndisable = C0114\n"
-        (tmp_path / "tox.ini").write_text(content)
-        _, stdout, _ = run_main_with_args([
-            "--linters", "pylint", str(tmp_path)
-        ])
-        assert "pylint" in stdout
+        assert "pylint" in tox_ini_pylint_result[1]
 
 
 @pytest.mark.integration

@@ -27,39 +27,40 @@ class TestModuleEntryPoint:
         )
         assert result.returncode == 0
 
-    def test_module_entry_point_with_findings_exits_1(
+    @pytest.fixture
+    def module_entry_point_with_findings_result(
         self, tmp_path: Path
+    ) -> subprocess.CompletedProcess[str]:
+        """Run python -m on a directory holding a .pylintrc."""
+        (tmp_path / ".pylintrc").touch()
+        return subprocess.run(
+            [
+                sys.executable, "-m",
+                "assert_no_linter_config_files",
+                "--linters", "pylint", str(tmp_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    def test_module_entry_point_with_findings_exits_1(
+        self,
+        module_entry_point_with_findings_result: (
+            subprocess.CompletedProcess[str]
+        ),
     ) -> None:
         """Module entry point exits 1 when findings exist."""
-        (tmp_path / ".pylintrc").touch()
-        result = subprocess.run(
-            [
-                sys.executable, "-m",
-                "assert_no_linter_config_files",
-                "--linters", "pylint", str(tmp_path),
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert result.returncode == 1
+        assert module_entry_point_with_findings_result.returncode == 1
 
     def test_module_entry_point_with_findings_outputs_pylint(
-        self, tmp_path: Path
+        self,
+        module_entry_point_with_findings_result: (
+            subprocess.CompletedProcess[str]
+        ),
     ) -> None:
         """Module entry point outputs pylint when findings exist."""
-        (tmp_path / ".pylintrc").touch()
-        result = subprocess.run(
-            [
-                sys.executable, "-m",
-                "assert_no_linter_config_files",
-                "--linters", "pylint", str(tmp_path),
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert "pylint" in result.stdout
+        assert "pylint" in module_entry_point_with_findings_result.stdout
 
     def test_main_module_runpy(self, tmp_path: Path) -> None:
         """Test __main__ module via runpy (in-process execution)."""
